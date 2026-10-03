@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scan | JDVP Attendance</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <a class="back" href="index.html">Home</a>
+    <h1>Scan attendance</h1>
+  </header>
+
+  <div id="reader" aria-label="Camera view"></div>
+  <div id="result" role="status" aria-live="polite">Starting camera…</div>
+
+  <section class="panel">
+    <h2>Camera not working? Enter the ID</h2>
+    <form id="manual-form" autocomplete="off">
+      <div class="row">
+        <div>
+          <label for="manual-id">Student ID</label>
+          <input id="manual-id" type="text" inputmode="numeric" maxlength="4" pattern="\d{4}" placeholder="0001">
+        </div>
+        <button class="btn" type="submit">Record attendance</button>
+      </div>
+    </form>
+    <p class="hint">Allow camera access when the browser asks. The camera needs an HTTPS link or localhost.</p>
+  </section>
+</main>
+
+<script src="lib/html5-qrcode.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/scan.js"></script>
+</body>
+</html>

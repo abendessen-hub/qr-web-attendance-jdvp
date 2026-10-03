@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Records | JDVP Attendance</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <a class="back" href="index.html">Home</a>
+    <h1>Attendance records</h1>
+  </header>
+
+  <section class="panel">
+    <div class="row">
+      <div>
+        <label for="search-id">Search by student ID</label>
+        <input id="search-id" type="search" inputmode="numeric" maxlength="4" placeholder="0001">
+      </div>
+      <div>
+        <label for="filter-date">Date</label>
+        <input id="filter-date" type="date">
+      </div>
+      <button class="btn ghost" id="clear" type="button">Clear</button>
+      <button class="btn" id="refresh" type="button">Refresh</button>
+    </div>
+    <div class="stats">
+      <span>Showing <strong id="count-shown">0</strong></span>
+      <span>Total records <strong id="count-total">0</strong></span>
+    </div>
+  </section>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Student ID</th><th>Date</th><th>Time</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="message" role="status">Loading records…</div>
+  </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/records.js"></script>
+</body>
+</html>
