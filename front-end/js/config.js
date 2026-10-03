@@ -1,6 +1,6 @@
 // Paste the Web app URL from Apps Script (Deploy > Manage deployments). It ends in /exec.
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbwcW-coZEJOjq2Pg8u9ReNsvvMEOY9eLgQsIsNi8yoC5pzOdapOxSVrGzNlA7l7FotR/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbz_WJm4G134-d4o0ME7r5mVYAJZjiZ9KlzbPWmXRCK9mw2EldxglxeMacqLVnEL1r5x/exec',
   MAX_ID: 400
 };
 
