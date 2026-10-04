@@ -4,6 +4,7 @@
 !.env.example\
 
 # Dependencies and local build/tool output
+documentation/
 node_modules/
 .netlify/
 dist/
