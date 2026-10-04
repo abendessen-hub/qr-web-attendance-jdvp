@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "dev": "netlify dev"
+  },
   "dependencies": {
     "cookie-parser": "^1.4.7",
     "dotenv": "^18.0.5",
