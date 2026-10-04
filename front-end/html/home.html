@@ -32,13 +32,7 @@
     </nav>
   </main>
 </body>
-<script>
-  (async () => {
-    const response = await fetch('/.netlify/functions/check-auth');
-    if (!response.ok) {
-      window.location.href = '/index.html';
-    }
-  })();
-</script>
+
+<script src="/back-end/js/authenticate.js"></script>
 
 </html>
