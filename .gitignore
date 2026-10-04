@@ -1,9 +1,18 @@
-docs/
+# Local environment variables
 .env
-server.js
-node_modules/
+.env.*
+!.env.example\
 
-# Local Netlify folder
-.netlify
-netlify.toml
-deno.lock
+# Dependencies and local build/tool output
+node_modules/
+.netlify/
+dist/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Operating system files
+.DS_Store
+Thumbs.db
