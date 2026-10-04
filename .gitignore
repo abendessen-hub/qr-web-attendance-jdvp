@@ -1,2 +1,9 @@
 docs/
 .env
+server.js
+node_modules/
+
+# Local Netlify folder
+.netlify
+netlify.toml
+deno.lock

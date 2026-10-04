@@ -24,7 +24,11 @@ function render() {
 }
 
 async function load() {
-  if (!apiReady()) { $('message').textContent = 'Set API_URL in js/config.js first.'; return; }
+  await configReady;
+  if (!apiReady()) {
+    alert('API URL is not configured yet.');
+    return;
+  }
   $('message').textContent = 'Loading records…';
   try {
     const res = await fetch(CONFIG.API_URL);

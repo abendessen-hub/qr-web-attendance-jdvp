@@ -12,24 +12,37 @@ async function verifyPassword(e) {
       body: JSON.stringify({ password: enteredPassword })
     });
 
+    const contentType = response.headers.get('content-type') || '';
+
+    if (!response.ok || !contentType.includes('application/json')) {
+      const bodyText = await response.text();
+      let message = 'Authentication failed.';
+
+      if (contentType.includes('application/json')) {
+        try {
+          const data = JSON.parse(bodyText);
+          message = data.message || message;
+        } catch (jsonError) {
+          console.error('Failed to parse login error JSON:', jsonError);
+        }
+      } else {
+        message = 'The login endpoint was not reached. Run the app with Netlify Dev or deploy it to Netlify so /.netlify/functions/login is available.';
+      }
+
+      throw new Error(message);
+    }
+
     const data = await response.json();
 
     if (data.success) {
-      // Cookie is automatically saved by the browser
       window.location.href = 'front-end/html/home.html';
     } else {
       alert('Incorrect password. Access denied.');
     }
   } catch (err) {
+    alert(err.message);
     console.error('Error submitting password:', err);
   }
 }
 
-async function test(e) {
-    e.preventDefault();
-    
-    window.location.href = 'front-end/html/home.html'; // adjust path to home if needed
-    //alert('Test function called.'); // Placeholder for actual test logic
-}
-
-document.getElementById('login-form').addEventListener('submit', test);
+document.getElementById('login-form').addEventListener('submit', verifyPassword);

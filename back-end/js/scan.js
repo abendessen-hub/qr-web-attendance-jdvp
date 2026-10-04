@@ -18,7 +18,11 @@ async function record(raw) {
   if (busy) return;
   if (id === lastId && Date.now() - lastAt < 4000) return;   // same code still in front of the camera
 
-  if (!apiReady()) { show('bad', 'Set API_URL in js/config.js first'); return; }
+  await configReady;
+  if (!apiReady()) {
+    alert('API URL is not configured yet.');
+    return;
+  }
 
   busy = true; lastId = id; lastAt = Date.now();
   resultEl.className = ''; resultEl.textContent = 'Checking ' + id + '…';
