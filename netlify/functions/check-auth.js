@@ -1,10 +1,8 @@
+const { json, isAuthenticated } = require('../lib/auth');
+
 exports.handler = async (event) => {
-  const cookies = event.headers.cookie || '';
-  const isAuthenticated = cookies.includes('auth_token=authenticated');
-
-  if (isAuthenticated) {
-    return { statusCode: 200, body: JSON.stringify({ authenticated: true }) };
+  if (isAuthenticated(event)) {
+    return json(200, { authenticated: true });
   }
-
-  return { statusCode: 401, body: JSON.stringify({ authenticated: false }) };
+  return json(401, { authenticated: false });
 };

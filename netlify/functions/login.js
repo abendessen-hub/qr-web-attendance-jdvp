@@ -1,29 +1,30 @@
+const { json, createToken, authCookie } = require('../lib/auth');
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) };
+    return json(405, { success: false, message: 'Method Not Allowed' });
   }
 
+  if (!process.env.AUTH_SECRET || !process.env.PASSWORDS) {
+    return json(500, { success: false, message: 'Server is not configured (missing PASSWORDS or AUTH_SECRET).' });
+  }
+
+  let password;
   try {
-    const { password } = JSON.parse(event.body);
-    const rawPasswords = process.env.PASSWORDS || '';
-    const allowedPasswords = rawPasswords.split(',').map(p => p.trim());
-
-    if (allowedPasswords.includes(password)) {
-      return {
-        statusCode: 200,
-        headers: {
-          // Sets a secure, HTTP-only cookie valid across the entire site for 1 day (86400 seconds)
-          'Set-Cookie': 'auth_token=authenticated; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400'
-        },
-        body: JSON.stringify({ success: true, message: 'Access Granted' })
-      };
-    }
-
-    return {
-      statusCode: 401,
-      body: JSON.stringify({ success: false, message: 'Invalid Password' })
-    };
+    ({ password } = JSON.parse(event.body || '{}'));
   } catch (err) {
-    return { statusCode: 400, body: JSON.stringify({ message: 'Invalid Request' }) };
+    return json(400, { success: false, message: 'Invalid Request' });
   }
+
+  const allowed = process.env.PASSWORDS.split(',').map(p => p.trim()).filter(Boolean);
+
+  if (typeof password === 'string' && allowed.includes(password.trim())) {
+    return json(200, { success: true, message: 'Access Granted' }, {
+      'Set-Cookie': authCookie(createToken())
+    });
+  }
+
+  // Small delay slows down guessing a 4-digit password.
+  await new Promise(resolve => setTimeout(resolve, 600));
+  return json(401, { success: false, message: 'Invalid Password' });
 };
