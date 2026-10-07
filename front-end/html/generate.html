@@ -5,49 +5,78 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Generate | JDVP Attendance</title>
 <link rel="stylesheet" href="/front-end/css/style.css">
-</head>/
+</head>
 <body>
 <main class="wrap">
   <header class="top">
-    <a class="back" href="/front-end//html/home.html">Home</a>
+    <a class="back" href="/front-end/html/home.html">Home</a>
     <h1>Generate QR codes</h1>
   </header>
 
+  <!-- Register & Generate a single badge -->
   <section class="panel">
-    <h2>One student</h2>
+    <h2>Register a trainee</h2>
     <div class="row">
       <div>
-        <label for="single-id">Student ID</label>
-        <input id="single-id" type="text" inputmode="numeric" maxlength="4" placeholder="0001">
+        <label for="gen-qual">Qualification</label>
+        <select id="gen-qual">
+          <option value="1">Cookery</option>
+          <option value="2">House Keeping</option>
+          <option value="3">CSS</option>
+          <option value="4">EIM</option>
+          <option value="5">SMAW NC I</option>
+          <option value="6">SMAW NC II</option>
+        </select>
       </div>
-      <button class="btn" id="single-make" type="button">Generate</button>
+      <div>
+        <label for="gen-name">Full Name</label>
+        <input id="gen-name" type="text" placeholder="Juan Dela Cruz">
+      </div>
     </div>
-    <div class="preview" id="single-preview"></div>
-    <button class="btn ghost" id="single-download" type="button" disabled>Download PNG</button>
+    <div class="row">
+      <div>
+        <label>Next ID</label>
+        <input id="gen-id" type="text" readonly placeholder="Loading…">
+      </div>
+      <button class="btn" id="gen-submit" type="button">Register & Generate</button>
+    </div>
+    <div class="preview" id="gen-preview"></div>
+    <button class="btn ghost" id="gen-download" type="button" disabled>Download PNG</button>
+    <p class="hint" id="gen-status"></p>
   </section>
 
+  <!-- Registered trainees & batch reprint -->
   <section class="panel">
-    <h2>A range of students</h2>
+    <h2>Registered trainees</h2>
     <div class="row">
       <div>
-        <label for="range-from">From</label>
-        <input id="range-from" type="text" inputmode="numeric" maxlength="4" value="0001">
+        <label for="list-qual">Filter by qualification</label>
+        <select id="list-qual">
+          <option value="">All</option>
+          <option value="Cookery">Cookery</option>
+          <option value="House Keeping">House Keeping</option>
+          <option value="CSS">CSS</option>
+          <option value="EIM">EIM</option>
+          <option value="SMAW NC I">SMAW NC I</option>
+          <option value="SMAW NC II">SMAW NC II</option>
+        </select>
       </div>
-      <div>
-        <label for="range-to">To</label>
-        <input id="range-to" type="text" inputmode="numeric" maxlength="4" value="0400">
-      </div>
+      <button class="btn" id="load-trainees" type="button">Load</button>
+      <button class="btn ghost" id="print-badges" type="button" disabled>Print all badges</button>
     </div>
-    <div class="row">
-      <button class="btn" id="range-make" type="button">Generate range</button>
-      <button class="btn ghost" id="range-zip" type="button" disabled>Download ZIP</button>
-      <button class="btn ghost" id="range-print" type="button" disabled>Print sheet</button>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Trainee ID</th><th>Name</th><th>Qualification</th><th></th></tr>
+        </thead>
+        <tbody id="trainees-body"></tbody>
+      </table>
+      <div id="trainees-msg" role="status"></div>
     </div>
-    <div id="progress" aria-hidden="true"><div></div></div>
-    <p class="hint" id="range-status">Each ZIP file holds one PNG per student, named by ID (for example 0001.png). The print sheet fits 12 codes per A4 page.</p>
   </section>
 
-  <div id="grid" aria-label="Generated QR codes"></div>
+  <!-- Print grid (hidden on screen, visible in print) -->
+  <div id="grid" aria-label="Generated QR badges"></div>
 </main>
 
 <script src="/back-end/js/authenticate.js"></script>
