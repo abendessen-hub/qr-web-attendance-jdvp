@@ -1,5 +1,6 @@
 const CONFIG = {
-  API_URL: ''
+  API_URL: '',
+  MAX_ID: 400
 };
 
 const QUALIFICATIONS = {
@@ -22,16 +23,27 @@ const configReady = (async function loadConfig() {
   }
 })();
 
-// Validate a 5-digit trainee ID (e.g. "10001" → "60001")
+// Normalizes 4-digit badge IDs (e.g. "0001") or 5-digit Trainee IDs (e.g. "60001")
 function normalizeId(value) {
-  const text = String(value).trim();
-  if (!/^\d{5}$/.test(text)) return null;
-  const prefix = text.charAt(0);
-  if (!QUALIFICATIONS[prefix]) return null;
-  const n    = Number(text);
-  const base = parseInt(prefix, 10) * 10000;
-  if (n <= base || n >= base + 10000) return null;
-  return text;
+  const text = String(value || '').trim();
+  
+  // 4-digit badge code (e.g. "0001" to "0400")
+  if (/^\d{1,4}$/.test(text)) {
+    const n = Number(text);
+    if (n >= 1 && n <= 9999) {
+      return String(n).padStart(4, '0');
+    }
+  }
+
+  // 5-digit Trainee ID (e.g. "10001" to "69999")
+  if (/^\d{5}$/.test(text)) {
+    const prefix = text.charAt(0);
+    if (QUALIFICATIONS[prefix]) {
+      return text;
+    }
+  }
+
+  return null;
 }
 
 function apiReady() {
