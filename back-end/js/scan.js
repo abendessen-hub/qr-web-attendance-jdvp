@@ -237,9 +237,9 @@ regCancelBtn.addEventListener('click', closeQuickRegistration);
 
 quickRegForm.addEventListener('submit', async function (e) {
   e.preventDefault();
-  const assignedId = regIdPreview.value.trim();
-  const name = regNameInput.value.trim();
-  const qp = regQualSelect.value;
+  const assignedId = normalizeId(regIdPreview.value);
+  const name = sanitizeText(regNameInput.value);
+  const qp = sanitizeText(regQualSelect.value);
   if (!name || !assignedId) return;
 
   show('', 'Registering ' + name + ' (' + assignedId + ')…');
