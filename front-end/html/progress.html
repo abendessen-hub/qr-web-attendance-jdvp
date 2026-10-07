@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Progress | JDVP Attendance</title>
+<link rel="stylesheet" href="/front-end/css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <a class="back" href="/front-end/html/home.html">Home</a>
+    <h1>Attendance Progress</h1>
+  </header>
+
+  <!-- Summary Cards -->
+  <section class="panel">
+    <div class="stats-cards">
+      <div class="stat-card">
+        <span class="stat-num" id="stat-total-students">0</span>
+        <span class="stat-label">Total Trainees Registered</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="stat-today-attendance">0</span>
+        <span class="stat-label">Active Scans Today</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="stat-total-records">0</span>
+        <span class="stat-label">Total Attendance Logs</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 1: Attendance Progress by Date (History & Bar Chart) -->
+  <section class="panel">
+    <h2>Attendance Progress by Date</h2>
+    <p class="hint">Daily attendance totals calculated dynamically across all 6 qualification sheets.</p>
+    
+    <div id="date-chart" class="chart-container" aria-label="Attendance per day bar chart">
+      <div class="chart-loading">Loading chart…</div>
+    </div>
+
+    <div class="table-wrap" style="margin-top: 14px; max-height: 220px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Total Students Recorded</th>
+          </tr>
+        </thead>
+        <tbody id="history-rows">
+          <tr><td colspan="2" class="table-empty">Loading history…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section 2: Attendance by Qualification -->
+  <section class="panel">
+    <h2>Attendance by Qualification</h2>
+    <p class="hint">Total unique trainees recorded per specialization.</p>
+    
+    <div id="qual-chart" class="chart-container" aria-label="Attendance by qualification">
+      <div class="chart-loading">Loading qualification statistics…</div>
+    </div>
+  </section>
+
+  <!-- Section 3: Daily Student History & Filterable Attendance Table -->
+  <section class="panel">
+    <h2>Daily Student Attendance History</h2>
+    <div class="row">
+      <div>
+        <label for="filter-date">Select Date</label>
+        <input id="filter-date" type="date">
+      </div>
+      <div>
+        <label for="filter-qual">Qualification</label>
+        <select id="filter-qual">
+          <option value="">All Qualifications</option>
+          <option value="Cookery">Cookery</option>
+          <option value="House Keeping">House Keeping</option>
+          <option value="CSS">CSS</option>
+          <option value="EIM">EIM</option>
+          <option value="SMAW NC I">SMAW NC I</option>
+          <option value="SMAW NC II">SMAW NC II</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div style="flex: 2 1 14rem;">
+        <label for="search-student">Search Trainee ID or Name</label>
+        <input id="search-student" type="search" placeholder="Search by ID (e.g. 60001) or name…">
+      </div>
+      <button class="btn ghost" id="btn-clear" type="button">Clear</button>
+      <button class="btn" id="btn-refresh" type="button">Refresh</button>
+    </div>
+
+    <div class="stats">
+      <span>Showing <strong id="count-shown">0</strong></span>
+      <span>Total filtered <strong id="count-total">0</strong></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Trainee ID</th>
+            <th>Name</th>
+            <th>Qualification</th>
+            <th>Date</th>
+            <th>Time In</th>
+            <th>Time Out</th>
+          </tr>
+        </thead>
+        <tbody id="records-body"></tbody>
+      </table>
+      <div id="table-message" role="status">Loading attendance records…</div>
+    </div>
+  </section>
+</main>
+
+<script src="/back-end/js/authenticate.js"></script>
+<script src="/back-end/js/config.js"></script>
+<script src="/back-end/js/progress.js"></script>
+</body>
+</html>
