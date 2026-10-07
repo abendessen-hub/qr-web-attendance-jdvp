@@ -1,4 +1,4 @@
-// QR Generator: single & batch range with ZIP export and A4 print
+// QR Generator: 4-digit badge generator with batch ZIP export and A4 printing
 // Uses qrcodejs and JSZip
 
 const SIZE = 300, MARGIN = 30;
@@ -9,7 +9,7 @@ const $ = function (id) { return document.getElementById(id); };
 let singleUrl = '';
 let batch = []; // [{ id, url }]
 
-// Returns a PNG data URL: the QR code on white canvas with clean quiet zone
+// Returns a PNG data URL: high-contrast QR code on white canvas with quiet zone
 function makePng(id) {
   qr.makeCode(id);
   const src = holder.querySelector('canvas');
@@ -28,16 +28,11 @@ function save(href, name) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 
-function getQualName(id) {
-  const prefix = String(id).charAt(0);
-  return QUALIFICATIONS[prefix] || 'JDVP Trainee';
-}
-
-// ─── One student ───
+// ─── One student (4 digits) ───
 $('single-make').addEventListener('click', function () {
   const id = normalizeId($('single-id').value);
   if (!id) {
-    $('single-preview').textContent = 'Enter a valid 5-digit Trainee ID (e.g. 10001 to 60400).';
+    $('single-preview').textContent = 'Enter an ID from 0001 to 0400.';
     return;
   }
   singleUrl = makePng(id);
@@ -47,8 +42,8 @@ $('single-make').addEventListener('click', function () {
   const card = document.createElement('div');
   card.className = 'qr-card';
   const label = document.createElement('span'); label.textContent = id;
-  const qual = document.createElement('small'); qual.textContent = getQualName(id);
-  card.append(img, label, qual);
+  const note = document.createElement('small'); note.textContent = 'JDVP Trainee';
+  card.append(img, label, note);
 
   $('single-preview').replaceChildren(card);
   $('single-download').disabled = false;
@@ -59,19 +54,13 @@ $('single-download').addEventListener('click', function () {
   save(singleUrl, $('single-download').dataset.id + '.png');
 });
 
-// ─── A range of students ───
+// ─── A range of students (0001 to 0400) ───
 $('range-make').addEventListener('click', function () {
   const from = normalizeId($('range-from').value);
   const to = normalizeId($('range-to').value);
 
   if (!from || !to || +from > +to) {
-    $('range-status').textContent = 'Enter a valid range with matching qualification prefix (e.g. 10001 to 10050).';
-    return;
-  }
-
-  // Ensure both from and to belong to the same qualification
-  if (from.charAt(0) !== to.charAt(0)) {
-    $('range-status').textContent = 'Range must be within the same qualification (first digit must match, e.g. 10001 to 10050).';
+    $('range-status').textContent = 'Enter a valid range, for example 0001 to 0400.';
     return;
   }
 
@@ -85,9 +74,9 @@ $('range-make').addEventListener('click', function () {
   let n = +from;
 
   (function step() {
-    const stop = Math.min(n + 20, +to + 1); // 20 codes per slice keeps browser responsive
+    const stop = Math.min(n + 20, +to + 1); // 20 codes per slice keeps browser smooth
     for (; n < stop; n++) {
-      const id = String(n).padStart(5, '0');
+      const id = String(n).padStart(4, '0');
       const url = makePng(id);
       batch.push({ id: id, url: url });
 
@@ -95,8 +84,8 @@ $('range-make').addEventListener('click', function () {
       card.className = 'qr-card';
       const img = new Image(); img.src = url; img.alt = 'QR code for ' + id;
       const label = document.createElement('span'); label.textContent = id;
-      const qual = document.createElement('small'); qual.textContent = getQualName(id);
-      card.append(img, label, qual);
+      const note = document.createElement('small'); note.textContent = 'JDVP Trainee';
+      card.append(img, label, note);
       $('grid').appendChild(card);
     }
 
