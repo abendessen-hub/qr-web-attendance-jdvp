@@ -1,5 +1,5 @@
 const CONFIG = {
-  API_URL: '',
+  API_URL: 'https://script.google.com/macros/s/AKfycbwrFhdqB2zuFnvCYKnxCyBPVVE9nfWog1yVVF__9pfi1pqueKfFhBLrOlVQmJa9fgNWXQ/exec',
   MAX_ID: 400
 };
 
@@ -12,14 +12,18 @@ const QUALIFICATIONS = {
   '6': 'SMAW NC II'
 };
 
-// Fetch API_URL from Netlify at runtime
+// Fetch API_URL from Netlify at runtime, fallback to built-in default if needed
 const configReady = (async function loadConfig() {
   try {
     const response = await fetch('/.netlify/functions/get-config');
-    const data = await response.json();
-    CONFIG.API_URL = data.API_URL;
+    if (response.ok) {
+      const data = await response.json();
+      if (data.API_URL) {
+        CONFIG.API_URL = data.API_URL;
+      }
+    }
   } catch (err) {
-    console.error('Failed to load configuration:', err);
+    console.warn('Using default configured API URL.');
   }
 })();
 
