@@ -3,27 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Scan QR | JDVP Attendance</title>
+<title>Scan QR | JDVP Monitoring Track</title>
 <link rel="stylesheet" href="/front-end/css/style.css">
 </head>
 <body>
 <main class="wrap">
   <header class="top">
     <a class="back" href="/front-end/html/home.html">Home</a>
-    <h1>Scan QR attendance</h1>
+    <h1>JDVP Monitoring Track</h1>
   </header>
 
+  <!-- Live Camera & Snap Photo Viewfinder -->
   <div class="scanner-container">
     <div id="reader" aria-label="Camera view"></div>
-    <div class="scanner-overlay">
+    <div class="scanner-overlay" id="scanner-overlay">
       <div class="scanner-laser"></div>
+    </div>
+    <!-- Frozen Snapshot Preview -->
+    <div id="snapshot-container" hidden>
+      <canvas id="snapshot-canvas"></canvas>
     </div>
   </div>
 
-  <div id="result" role="status" aria-live="polite">Starting camera…</div>
-  <button class="btn ghost" id="torch" hidden type="button">Toggle Flashlight</button>
+  <!-- Snapshot & Undo Controls -->
+  <div class="scan-controls">
+    <button class="btn primary-action" id="snap-btn" type="button">📸 Snap Photo of QR</button>
+    <button class="btn ghost danger" id="undo-btn" type="button" hidden>↩ Undo / Retake Photo</button>
+    <label class="btn ghost file-btn" for="qr-file-input">
+      📁 Choose Photo
+      <input id="qr-file-input" type="file" accept="image/*" capture="environment" hidden>
+    </label>
+    <button class="btn ghost" id="torch" hidden type="button">Flashlight</button>
+  </div>
 
-  <!-- On-the-fly Trainee Registration Modal (pops up only when scanned 4-digit code is not registered) -->
+  <div id="result" role="status" aria-live="polite">Hold QR code steady or tap "Snap Photo of QR".</div>
+
+  <!-- On-the-fly Trainee Registration Modal -->
   <div id="reg-modal" class="modal-backdrop" hidden>
     <div class="modal">
       <h2>Register Trainee</h2>
@@ -64,18 +79,19 @@
     </div>
   </div>
 
+  <!-- Manual Entry Fallback -->
   <section class="panel">
     <h2>Camera not working? Enter Badge or Trainee ID</h2>
     <form id="manual-form" autocomplete="off">
       <div class="row">
         <div>
-          <label for="manual-id">ID (4 digits e.g. 0001, or 5 digits e.g. 60001)</label>
+          <label for="manual-id">Student ID (4 digits e.g. 0001, or 5 digits e.g. 60001)</label>
           <input id="manual-id" type="text" inputmode="numeric" maxlength="5" placeholder="0001 or 60001">
         </div>
         <button class="btn" type="submit">Record attendance</button>
       </div>
     </form>
-    <p class="hint">Ensure good lighting. Hold the QR code steady in front of the camera box.</p>
+    <p class="hint">Type the 4-digit badge code (e.g. 0001) or the 5-digit Trainee ID (e.g. 60001).</p>
   </section>
 </main>
 
