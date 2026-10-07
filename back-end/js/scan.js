@@ -1,6 +1,6 @@
 // QR scanner: html5-qrcode 2.3.x
 // Integrates with Google Apps Script backend (Code.gs)
-// Handles: Time In, Time Out (3-5 PM), Not Time out yet, Completed today, On-the-fly Trainee Registration
+// Handles: Time In, Time Out (3-5 PM), Not Time out yet, Completed today, On-the-fly Trainee Registration upon scan
 
 const resultEl = document.getElementById('result');
 const manualForm = document.getElementById('manual-form');
@@ -15,8 +15,8 @@ const regNameInput = document.getElementById('reg-name');
 const regIdPreview = document.getElementById('reg-id-preview');
 const regCancelBtn = document.getElementById('reg-cancel');
 
-const REQUIRED_READS = 2;          // same code must decode this many times...
-const READ_WINDOW_MS = 1500;       // ...within this window (filters misreads)
+const REQUIRED_READS = 2;
+const READ_WINDOW_MS = 1500;
 const SAME_CODE_COOLDOWN_MS = 4000;
 const REQUEST_TIMEOUT_MS = 10000;
 
@@ -39,7 +39,7 @@ function beep(ok) {
     gain.gain.value = 0.08;
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime + (ok ? 0.12 : 0.25));
-  } catch (_) { /* audio is optional */ }
+  } catch (_) {}
 }
 
 function show(kind, message) {
@@ -49,7 +49,6 @@ function show(kind, message) {
   beep(kind === 'ok');
 }
 
-// Browsers only allow audio after a user gesture
 window.addEventListener('pointerdown', function () {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -105,7 +104,7 @@ async function record(id) {
       show('bad', data.message || 'Could not record. Scan again.');
     }
   } catch (err) {
-    lastId = '';   // allow an immediate rescan
+    lastId = '';
     show('bad', 'No connection. Check internet and scan again.');
   } finally {
     setTimeout(function () { busy = false; }, 1500);
@@ -113,28 +112,16 @@ async function record(id) {
 }
 
 // ---------- On-the-fly Trainee Registration ----------
-async function refreshQuickRegId() {
-  const qp = regQualSelect.value;
-  regIdPreview.value = 'Calculating…';
-  try {
-    const data = await postAction({ action: 'getNextId', qualification: qp });
-    regIdPreview.value = data.id || '—';
-  } catch (_) {
-    regIdPreview.value = '—';
-  }
-}
-
 function openQuickRegistration(scannedId) {
-  // If the scanned ID has a valid qualification prefix (1-6), default to it
   if (scannedId && scannedId.length === 5) {
     const prefix = scannedId.charAt(0);
     if (QUALIFICATIONS[prefix]) {
       regQualSelect.value = prefix;
     }
   }
+  regIdPreview.value = scannedId;
   regNameInput.value = '';
   regModal.hidden = false;
-  refreshQuickRegId();
   regNameInput.focus();
 }
 
@@ -143,14 +130,14 @@ function closeQuickRegistration() {
   regNameInput.value = '';
 }
 
-regQualSelect.addEventListener('change', refreshQuickRegId);
 regCancelBtn.addEventListener('click', closeQuickRegistration);
 
 quickRegForm.addEventListener('submit', async function (e) {
   e.preventDefault();
+  const id = regIdPreview.value.trim();
   const name = regNameInput.value.trim();
   const qp = regQualSelect.value;
-  if (!name) return;
+  if (!name || !id) return;
 
   await configReady;
   if (!apiReady()) {
@@ -158,21 +145,20 @@ quickRegForm.addEventListener('submit', async function (e) {
     return;
   }
 
-  show('', 'Registering ' + name + '…');
+  show('', 'Registering ' + name + ' (' + id + ')…');
   try {
-    const regRes = await postAction({ action: 'register', name: name, qualification: qp });
+    const regRes = await postAction({ action: 'register', id: id, name: name, qualification: qp });
     if (regRes.status !== 'ok') {
       alert(regRes.message || 'Registration failed.');
       return;
     }
 
-    const assignedId = regRes.id;
     closeQuickRegistration();
-    show('ok', 'Registered: ' + regRes.name + ' (' + assignedId + '). Recording Time In…');
+    show('ok', 'Registered: ' + regRes.name + ' (' + id + '). Recording attendance…');
 
     // Immediately record attendance for the newly registered trainee
     busy = false;
-    record(assignedId);
+    record(id);
   } catch (err) {
     alert('Failed to register trainee: ' + err.message);
   }
@@ -190,10 +176,8 @@ function onScan(text) {
     return;
   }
 
-  // Same code still in front of the camera: keep cooldown alive
   if (id === lastId && now - lastAt < SAME_CODE_COOLDOWN_MS) { lastAt = now; return; }
 
-  // Require repeated identical reads before trusting code
   if (candidate.id === id && now - candidate.first <= READ_WINDOW_MS) {
     candidate.count++;
   } else {
@@ -226,7 +210,7 @@ function setupTorch() {
         torchBtn.setAttribute('aria-pressed', String(torch.value()));
       } catch (_) {}
     };
-  } catch (_) { /* torch not available */ }
+  } catch (_) {}
 }
 
 async function startScanner() {
