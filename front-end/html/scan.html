@@ -17,13 +17,17 @@
   <div id="result" role="status" aria-live="polite">Starting camera…</div>
   <button class="btn ghost" id="torch" hidden type="button">Toggle Flashlight</button>
 
-  <!-- On-the-fly Trainee Registration Modal (if unscanned/unregistered) -->
+  <!-- On-the-fly Trainee Registration Modal (pops up only when scanned ID is not registered) -->
   <div id="reg-modal" class="modal-backdrop" hidden>
     <div class="modal">
-      <h2>Trainee Not Registered</h2>
-      <p class="hint">This trainee does not have a registration record yet. Enter their details to register them and record attendance now.</p>
+      <h2>Register Trainee</h2>
+      <p class="hint">This QR code is not registered yet. Enter the student's name to link it and record attendance now.</p>
       <form id="quick-reg-form" autocomplete="off">
         <div class="row">
+          <div>
+            <label>Scanned Trainee ID</label>
+            <input id="reg-id-preview" type="text" readonly>
+          </div>
           <div>
             <label for="reg-qual">Qualification</label>
             <select id="reg-qual">
@@ -35,15 +39,11 @@
               <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC II</option>
             </select>
           </div>
-          <div>
-            <label for="reg-name">Full Name</label>
-            <input id="reg-name" type="text" placeholder="Juan Dela Cruz" required>
-          </div>
         </div>
         <div class="row">
           <div>
-            <label>Generated Trainee ID</label>
-            <input id="reg-id-preview" type="text" readonly placeholder="Auto-generated">
+            <label for="reg-name">Full Name</label>
+            <input id="reg-name" type="text" placeholder="Juan Dela Cruz" required>
           </div>
         </div>
         <div class="row">
