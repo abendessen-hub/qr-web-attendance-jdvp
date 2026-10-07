@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Generate | JDVP Attendance</title>
+<title>Generate QR | JDVP Attendance</title>
 <link rel="stylesheet" href="/front-end/css/style.css">
 </head>
 <body>
@@ -13,70 +13,44 @@
     <h1>Generate QR codes</h1>
   </header>
 
-  <!-- Register & Generate a single badge -->
+  <!-- Option 1: One student -->
   <section class="panel">
-    <h2>Register a trainee</h2>
+    <h2>One student</h2>
     <div class="row">
       <div>
-        <label for="gen-qual">Qualification</label>
-        <select id="gen-qual">
-          <option value="1">Cookery</option>
-          <option value="2">House Keeping</option>
-          <option value="3">CSS</option>
-          <option value="4">EIM</option>
-          <option value="5">SMAW NC I</option>
-          <option value="6">SMAW NC II</option>
-        </select>
+        <label for="single-id">Trainee ID (e.g. 10001 or 60001)</label>
+        <input id="single-id" type="text" inputmode="numeric" maxlength="5" placeholder="10001">
       </div>
-      <div>
-        <label for="gen-name">Full Name</label>
-        <input id="gen-name" type="text" placeholder="Juan Dela Cruz">
-      </div>
+      <button class="btn" id="single-make" type="button">Generate</button>
     </div>
-    <div class="row">
-      <div>
-        <label>Next ID</label>
-        <input id="gen-id" type="text" readonly placeholder="Loading…">
-      </div>
-      <button class="btn" id="gen-submit" type="button">Register & Generate</button>
-    </div>
-    <div class="preview" id="gen-preview"></div>
-    <button class="btn ghost" id="gen-download" type="button" disabled>Download PNG</button>
-    <p class="hint" id="gen-status"></p>
+    <div class="preview" id="single-preview"></div>
+    <button class="btn ghost" id="single-download" type="button" disabled>Download PNG</button>
   </section>
 
-  <!-- Registered trainees & batch reprint -->
+  <!-- Option 2: A range of students -->
   <section class="panel">
-    <h2>Registered trainees</h2>
+    <h2>A range of students</h2>
     <div class="row">
       <div>
-        <label for="list-qual">Filter by qualification</label>
-        <select id="list-qual">
-          <option value="">All</option>
-          <option value="Cookery">Cookery</option>
-          <option value="House Keeping">House Keeping</option>
-          <option value="CSS">CSS</option>
-          <option value="EIM">EIM</option>
-          <option value="SMAW NC I">SMAW NC I</option>
-          <option value="SMAW NC II">SMAW NC II</option>
-        </select>
+        <label for="range-from">From</label>
+        <input id="range-from" type="text" inputmode="numeric" maxlength="5" value="10001">
       </div>
-      <button class="btn" id="load-trainees" type="button">Load</button>
-      <button class="btn ghost" id="print-badges" type="button" disabled>Print all badges</button>
+      <div>
+        <label for="range-to">To</label>
+        <input id="range-to" type="text" inputmode="numeric" maxlength="5" value="10050">
+      </div>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Trainee ID</th><th>Name</th><th>Qualification</th><th></th></tr>
-        </thead>
-        <tbody id="trainees-body"></tbody>
-      </table>
-      <div id="trainees-msg" role="status"></div>
+    <div class="row">
+      <button class="btn" id="range-make" type="button">Generate range</button>
+      <button class="btn ghost" id="range-zip" type="button" disabled>Download ZIP</button>
+      <button class="btn ghost" id="range-print" type="button" disabled>Print sheet (A4)</button>
     </div>
+    <div id="progress" aria-hidden="true"><div></div></div>
+    <p class="hint" id="range-status">Each ZIP file holds one PNG per trainee, named by ID (for example 10001.png). The print sheet fits 12 codes per standard A4 page.</p>
   </section>
 
-  <!-- Print grid (hidden on screen, visible in print) -->
-  <div id="grid" aria-label="Generated QR badges"></div>
+  <!-- Grid of generated QR cards for screen preview and A4 printing -->
+  <div id="grid" aria-label="Generated QR codes"></div>
 </main>
 
 <script src="/back-end/js/authenticate.js"></script>
@@ -84,6 +58,5 @@
 <script src="/back-end/lib/jszip.min.js"></script>
 <script src="/back-end/js/config.js"></script>
 <script src="/back-end/js/generate.js"></script>
-
 </body>
 </html>
