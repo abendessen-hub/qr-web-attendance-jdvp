@@ -1,11 +1,11 @@
 {
+  "name": "jdvp-monitoring-track",
+  "version": "2.0.0",
+  "description": "JDVP Monitoring Track - Luis Y. Ferrer Jr. Senior High School",
   "scripts": {
     "dev": "netlify dev"
   },
-  "dependencies": {
-    "cookie-parser": "^1.4.7",
-    "dotenv": "^18.0.5",
-    "express": "^5.2.1",
+  "devDependencies": {
     "netlify-cli": "^27.10.2"
   }
 }
