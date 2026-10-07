@@ -2,5 +2,9 @@
   functions = "netlify/functions"
   publish = "."
 
+[build.environment]
+  API_URL = "https://script.google.com/macros/s/AKfycbwrFhdqB2zuFnvCYKnxCyBPVVE9nfWog1yVVF__9pfi1pqueKfFhBLrOlVQmJa9fgNWXQ/exec"
+  ACCOUNTS = "1trainee2026:2026,2trainee2026:2026,3trainee2026:2026,4trainee2026:2026,5trainee2026:2026,6trainee2026:2026,7trainee2026:2026"
+
 [dev]
   port = 8888
