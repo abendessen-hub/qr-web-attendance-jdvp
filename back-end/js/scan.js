@@ -1,10 +1,18 @@
-// High-Accuracy QR Scanner & Trainee Registration Controller
-// Supports 4-digit badges (0001) that become 5-digit Trainee IDs (QNNNN) upon qualification selection
+// High-Accuracy Scanner with "Snap Photo", "Undo/Retake", and Fallback Connection
+// Supports 4-digit badges (0001) that become 5-digit Trainee IDs (QNNNN)
 
 const resultEl = document.getElementById('result');
 const manualForm = document.getElementById('manual-form');
 const manualInput = document.getElementById('manual-id');
 const torchBtn = document.getElementById('torch');
+
+// Snap & Undo elements
+const snapBtn = document.getElementById('snap-btn');
+const undoBtn = document.getElementById('undo-btn');
+const snapshotContainer = document.getElementById('snapshot-container');
+const snapshotCanvas = document.getElementById('snapshot-canvas');
+const fileInput = document.getElementById('qr-file-input');
+const scannerOverlay = document.getElementById('scanner-overlay');
 
 // Quick registration modal elements
 const regModal = document.getElementById('reg-modal');
@@ -15,9 +23,8 @@ const regNameInput = document.getElementById('reg-name');
 const regIdPreview = document.getElementById('reg-id-preview');
 const regCancelBtn = document.getElementById('reg-cancel');
 
-// Scanner tuning: 1 read for instant accuracy, generous 3s debounce per unique code
 const SAME_CODE_COOLDOWN_MS = 3000;
-const REQUEST_TIMEOUT_MS = 10000;
+const REQUEST_TIMEOUT_MS = 12000;
 
 let busy = false;
 let lastId = '';
@@ -55,34 +62,45 @@ window.addEventListener('pointerdown', function () {
   } catch (_) {}
 }, { once: true });
 
-// ---------- network communication ----------
+// ---------- network communication with fallback ----------
 async function postAction(payload) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS);
-  try {
-    const res = await fetch(CONFIG.API_URL, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      signal: ctrl.signal
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.json();
-  } finally {
-    clearTimeout(timer);
+  const urlsToTry = [
+    CONFIG.API_URL,     // 1. Netlify proxy (bypasses browser CORS & redirects)
+    CONFIG.FALLBACK_URL // 2. Direct Apps Script URL
+  ].filter(Boolean);
+
+  let lastError = null;
+
+  for (const url of urlsToTry) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+        signal: ctrl.signal
+      });
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      lastError = err;
+      console.warn('Request failed on ' + url + ':', err);
+    } finally {
+      clearTimeout(timer);
+    }
   }
+
+  throw lastError || new Error('All connection attempts failed.');
 }
 
 async function record(id) {
   if (busy) return;
 
-  await configReady;
-  if (!apiReady()) {
-    show('bad', 'API URL is not configured yet.');
-    return;
-  }
-
   busy = true; lastId = id; lastAt = Date.now();
-  resultEl.className = ''; resultEl.textContent = 'Checking ' + id + '…';
+  resultEl.className = ''; resultEl.textContent = 'Recording ' + id + '…';
 
   try {
     const data = await postAction({ action: 'scan', id: id });
@@ -101,20 +119,100 @@ async function record(id) {
     } else if (data.status === 'invalid') {
       show('bad', 'Invalid QR code.');
     } else {
-      show('bad', data.message || 'Could not record. Scan again.');
+      show('bad', data.message || 'Could not record. Try again.');
     }
   } catch (err) {
     lastId = '';
-    show('bad', 'No connection. Check internet and scan again.');
+    show('bad', 'Connection error: ' + (err.message || 'Please check network and try again.'));
   } finally {
     setTimeout(function () { busy = false; }, 1200);
   }
 }
 
+// ---------- Snap Photo & Undo Features ----------
+function takeSnapshotFromVideo() {
+  const video = document.querySelector('#reader video');
+  if (!video) {
+    show('bad', 'Camera is not ready yet. Please wait a moment.');
+    return;
+  }
+
+  const w = video.videoWidth || 640;
+  const h = video.videoHeight || 480;
+  snapshotCanvas.width = w;
+  snapshotCanvas.height = h;
+
+  const ctx = snapshotCanvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, w, h);
+
+  // Display snapshot
+  snapshotContainer.hidden = false;
+  undoBtn.hidden = false;
+  if (scannerOverlay) scannerOverlay.hidden = true;
+
+  resultEl.className = '';
+  resultEl.textContent = 'Processing photo snapshot…';
+
+  // Convert canvas to blob and decode
+  snapshotCanvas.toBlob(async function (blob) {
+    if (!blob) {
+      show('bad', 'Could not capture photo. Try again.');
+      return;
+    }
+
+    try {
+      const file = new File([blob], 'snapshot.png', { type: 'image/png' });
+      const decodedText = await scanner.scanFile(file, true);
+      const validId = normalizeId(decodedText);
+      if (validId) {
+        record(validId);
+      } else {
+        show('bad', 'Invalid QR code in photo: ' + decodedText);
+      }
+    } catch (decodeErr) {
+      show('bad', 'Photo was blurry or no QR code was detected. Tap "Undo / Retake Photo" to try again.');
+    }
+  }, 'image/png');
+}
+
+function undoSnapshot() {
+  snapshotContainer.hidden = true;
+  undoBtn.hidden = true;
+  if (scannerOverlay) scannerOverlay.hidden = false;
+  resultEl.className = '';
+  resultEl.textContent = 'Ready. Hold QR code in front of the camera.';
+  busy = false;
+}
+
+snapBtn.addEventListener('click', takeSnapshotFromVideo);
+undoBtn.addEventListener('click', undoSnapshot);
+
+// Handle manual photo upload
+fileInput.addEventListener('change', async function () {
+  if (!fileInput.files || fileInput.files.length === 0) return;
+  const file = fileInput.files[0];
+  resultEl.className = '';
+  resultEl.textContent = 'Processing uploaded photo…';
+  undoBtn.hidden = false;
+
+  try {
+    const decodedText = await scanner.scanFile(file, true);
+    const validId = normalizeId(decodedText);
+    if (validId) {
+      record(validId);
+    } else {
+      show('bad', 'Invalid QR code in photo: ' + decodedText);
+    }
+  } catch (err) {
+    show('bad', 'Photo was blurry or no QR code found. Tap "Undo / Retake Photo" to retry.');
+  } finally {
+    fileInput.value = '';
+  }
+});
+
 // ---------- On-the-fly Trainee Registration Modal ----------
 function updateGeneratedIdPreview() {
   const qp = regQualSelect.value;
-  // Keeps the 4 digits exactly the same, only prepending the qualification digit!
   const fourDigits = currentScannedBadge.slice(-4);
   const assignedId = qp + fourDigits;
   regIdPreview.value = assignedId;
@@ -139,16 +237,10 @@ regCancelBtn.addEventListener('click', closeQuickRegistration);
 
 quickRegForm.addEventListener('submit', async function (e) {
   e.preventDefault();
-  const assignedId = regIdPreview.value.trim(); // e.g. 60001
+  const assignedId = regIdPreview.value.trim();
   const name = regNameInput.value.trim();
   const qp = regQualSelect.value;
   if (!name || !assignedId) return;
-
-  await configReady;
-  if (!apiReady()) {
-    alert('API URL is not configured yet.');
-    return;
-  }
 
   show('', 'Registering ' + name + ' (' + assignedId + ')…');
   try {
@@ -167,7 +259,6 @@ quickRegForm.addEventListener('submit', async function (e) {
     closeQuickRegistration();
     show('ok', 'Registered: ' + regRes.name + ' (' + assignedId + '). Recording Time In…');
 
-    // Immediately record attendance for this trainee
     busy = false;
     record(assignedId);
   } catch (err) {
@@ -175,9 +266,9 @@ quickRegForm.addEventListener('submit', async function (e) {
   }
 });
 
-// ---------- high-accuracy decode handling ----------
+// ---------- Continuous Live Scan ----------
 function onScan(text) {
-  if (busy || !regModal.hidden) return;
+  if (busy || !regModal.hidden || !snapshotContainer.hidden) return;
   const now = Date.now();
   const id = normalizeId(text);
 
@@ -186,25 +277,28 @@ function onScan(text) {
     return;
   }
 
-  // Same code still in front of camera: keep cooldown alive
   if (id === lastId && now - lastAt < SAME_CODE_COOLDOWN_MS) {
     lastAt = now;
     return;
   }
 
-  // Instant 1-read recognition: fast and accurate
   record(id);
 }
 
+// ---------- Manual Form Entry ----------
 manualForm.addEventListener('submit', function (e) {
   e.preventDefault();
-  const id = normalizeId(manualInput.value);
+  const raw = manualInput.value.trim();
+  const id = normalizeId(raw);
   manualInput.value = '';
-  if (!id) { show('bad', 'Enter a 4-digit badge (e.g. 0001) or 5-digit ID (e.g. 60001)'); return; }
+  if (!id) {
+    show('bad', 'Please enter a 4-digit badge (e.g. 0001) or 5-digit ID (e.g. 60001)');
+    return;
+  }
   record(id);
 });
 
-// ---------- high-accuracy camera initialization ----------
+// ---------- Camera Initialization ----------
 function setupTorch() {
   if (!torchBtn) return;
   try {
@@ -223,7 +317,6 @@ function setupTorch() {
 async function startScanner() {
   if (running) return;
 
-  // Use native BarcodeDetector if available (hardware acceleration)
   scanner = scanner || new Html5Qrcode('reader', {
     formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
@@ -231,16 +324,14 @@ async function startScanner() {
   });
 
   const baseConfig = {
-    fps: 24, // High framerate for snappy recognition
+    fps: 24,
     disableFlip: true,
-    qrbox: function (viewfinderWidth, viewfinderHeight) {
-      // 80% generous scan zone so user doesn't struggle to center the code
-      const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
+    qrbox: function (w, h) {
+      const edge = Math.floor(Math.min(w, h) * 0.8);
       return { width: edge, height: edge };
     }
   };
 
-  // High-def 720p constraints: optimal crispness for QR edges without latency
   const hiRes = Object.assign({}, baseConfig, {
     videoConstraints: {
       facingMode: { ideal: 'environment' },
@@ -264,12 +355,12 @@ async function startScanner() {
     } catch (_) {}
 
     setupTorch();
-    resultEl.textContent = 'Ready. Hold QR code in front of the camera.';
+    resultEl.textContent = 'Hold QR code steady or tap "Snap Photo of QR".';
   } catch (err) {
     const denied = err && (err.name === 'NotAllowedError' || /permission/i.test(String(err)));
     show('bad', denied
-      ? 'Camera blocked. Allow camera permissions or use manual entry.'
-      : 'Camera unavailable. Use HTTPS or manual entry.');
+      ? 'Camera blocked. Allow camera permissions or use manual entry below.'
+      : 'Camera unavailable. Use HTTPS or manual entry below.');
   }
 }
 
@@ -281,7 +372,7 @@ async function stopScanner() {
 
 document.addEventListener('visibilitychange', function () {
   if (document.hidden) stopScanner();
-  else startScanner();
+  else if (snapshotContainer.hidden) startScanner();
 });
 
 startScanner();
