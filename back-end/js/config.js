@@ -1,5 +1,6 @@
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbwrFhdqB2zuFnvCYKnxCyBPVVE9nfWog1yVVF__9pfi1pqueKfFhBLrOlVQmJa9fgNWXQ/exec',
+  API_URL: '/.netlify/functions/api',
+  FALLBACK_URL: 'https://script.google.com/macros/s/AKfycbwrFhdqB2zuFnvCYKnxCyBPVVE9nfWog1yVVF__9pfi1pqueKfFhBLrOlVQmJa9fgNWXQ/exec',
   MAX_ID: 400
 };
 
@@ -12,20 +13,7 @@ const QUALIFICATIONS = {
   '6': 'SMAW NC II'
 };
 
-// Fetch API_URL from Netlify at runtime, fallback to built-in default if needed
-const configReady = (async function loadConfig() {
-  try {
-    const response = await fetch('/.netlify/functions/get-config');
-    if (response.ok) {
-      const data = await response.json();
-      if (data.API_URL) {
-        CONFIG.API_URL = data.API_URL;
-      }
-    }
-  } catch (err) {
-    console.warn('Using default configured API URL.');
-  }
-})();
+const configReady = Promise.resolve();
 
 // Normalizes 4-digit badge IDs (e.g. "0001") or 5-digit Trainee IDs (e.g. "60001")
 function normalizeId(value) {
@@ -51,5 +39,5 @@ function normalizeId(value) {
 }
 
 function apiReady() {
-  return CONFIG.API_URL && CONFIG.API_URL.indexOf('http') === 0;
+  return true;
 }
