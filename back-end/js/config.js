@@ -1,6 +1,5 @@
 const CONFIG = {
   API_URL: '/.netlify/functions/api',
-  FALLBACK_URL: 'https://script.google.com/macros/s/AKfycbwrFhdqB2zuFnvCYKnxCyBPVVE9nfWog1yVVF__9pfi1pqueKfFhBLrOlVQmJa9fgNWXQ/exec',
   MAX_ID: 400
 };
 
@@ -15,9 +14,9 @@ const QUALIFICATIONS = {
 
 const configReady = Promise.resolve();
 
-// Normalizes 4-digit badge IDs (e.g. "0001") or 5-digit Trainee IDs (e.g. "60001")
+// Validates and sanitizes 4-digit badge IDs (e.g. "0001") or 5-digit Trainee IDs (e.g. "60001")
 function normalizeId(value) {
-  const text = String(value || '').trim();
+  const text = String(value || '').replace(/[^\d]/g, '').trim();
   
   // 4-digit badge code (e.g. "0001" to "0400")
   if (/^\d{1,4}$/.test(text)) {
@@ -36,6 +35,11 @@ function normalizeId(value) {
   }
 
   return null;
+}
+
+function sanitizeText(str, maxLen = 70) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[<>'"/\\;`]/g, '').trim().slice(0, maxLen);
 }
 
 function apiReady() {
