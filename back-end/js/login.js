@@ -1,11 +1,22 @@
+const ALLOWED_ACCOUNTS = {
+  '1trainee2026': '2026',
+  '2trainee2026': '2026',
+  '3trainee2026': '2026',
+  '4trainee2026': '2026',
+  '5trainee2026': '2026',
+  '6trainee2026': '2026',
+  '7trainee2026': '2026'
+};
+
 const $ = function (id) { return document.getElementById(id); };
 
 async function verifyLogin(e) {
   e.preventDefault();
 
-  const username = $('username-input').value;
-  const password = $('password-input').value;
+  const username = $('username-input').value.trim();
+  const password = $('password-input').value.trim();
 
+  // 1. Try Netlify serverless function if available
   try {
     const response = await fetch('/.netlify/functions/login', {
       method: 'POST',
@@ -13,36 +24,24 @@ async function verifyLogin(e) {
       body: JSON.stringify({ username: username, password: password })
     });
 
-    const contentType = response.headers.get('content-type') || '';
-
-    if (!response.ok || !contentType.includes('application/json')) {
-      const bodyText = await response.text();
-      let message = 'Authentication failed.';
-
-      if (contentType.includes('application/json')) {
-        try {
-          const data = JSON.parse(bodyText);
-          message = data.message || message;
-        } catch (jsonError) {
-          console.error('Failed to parse login error JSON:', jsonError);
-        }
-      } else {
-        message = 'The login endpoint was not reached. Run the app with Netlify Dev or deploy it to Netlify so /.netlify/functions/login is available.';
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        sessionStorage.setItem('jdvp_auth', 'true');
+        window.location.href = 'front-end/html/home.html';
+        return;
       }
-
-      throw new Error(message);
     }
+  } catch (_) {
+    // Netlify function not reachable (e.g. running on GitHub Pages)
+  }
 
-    const data = await response.json();
-
-    if (data.success) {
-      window.location.href = '/front-end/html/home.html';
-    } else {
-      alert('Incorrect username or password. Access denied.');
-    }
-  } catch (err) {
-    alert(err.message);
-    console.error('Error submitting login:', err);
+  // 2. Client-side authentication fallback (works seamlessly on GitHub Pages)
+  if (ALLOWED_ACCOUNTS[username] && ALLOWED_ACCOUNTS[username] === password) {
+    sessionStorage.setItem('jdvp_auth', 'true');
+    window.location.href = 'front-end/html/home.html';
+  } else {
+    alert('Incorrect username or password. Access denied.');
   }
 }
 
