@@ -10,8 +10,10 @@
  * 5. SMAW NC I
  * 6. SMAW NC II
  *
- * Each sheet contains EXACTLY these 5 columns:
- * Trainee ID | Name | Date | Time In | Time Out
+ * Columns: Trainee ID | Name | Date | Time In | Time Out
+ *
+ * Supports 4-digit badge codes (e.g. 0001) that become 5-digit Trainee IDs (e.g. 60001)
+ * when scanned and registered.
  *
  * Paste into Extensions → Apps Script inside the Google Sheet.
  * Run setup() once from the editor to create the 6 tabs with headers.
@@ -32,9 +34,6 @@ const QUALIFICATIONS = {
 const TIME_OUT_START = 15; // 3:00 PM (24-hour format)
 const TIME_OUT_END = 17;   // 5:00 PM (24-hour format)
 
-/* ═══════════════════════════════════════════
-   One-time setup — creates EXACTLY the 6 tabs
-   ═══════════════════════════════════════════ */
 function setup() {
   const ss = SpreadsheetApp.getActive();
 
@@ -42,11 +41,10 @@ function setup() {
     let sh = ss.getSheetByName(name);
     if (!sh) sh = ss.insertSheet(name);
     
-    // Exact 5 columns as required
     sh.getRange('A1:E1')
       .setValues([['Trainee ID', 'Name', 'Date', 'Time In', 'Time Out']])
       .setFontWeight('bold');
-    sh.getRange('A:A').setNumberFormat('@'); // text format preserves leading digits
+    sh.getRange('A:A').setNumberFormat('@');
     sh.getRange('C:E').setNumberFormat('@');
     sh.setFrozenRows(1);
     sh.setColumnWidth(1, 110);
@@ -56,10 +54,6 @@ function setup() {
     sh.setColumnWidth(5, 110);
   }
 }
-
-/* ═══════════════════════════════════════════
-   Helpers (Operating directly on the 6 sheets)
-   ═══════════════════════════════════════════ */
 
 function qualFromId(id) {
   const prefix = String(id).charAt(0);
@@ -76,7 +70,7 @@ function getNextId(qualPrefix) {
   if (!sh) return String(parseInt(qualPrefix, 10) * 10000 + 1);
 
   const last = sh.getLastRow();
-  const base = parseInt(qualPrefix, 10) * 10000; // e.g. 10000, 20000, 60000
+  const base = parseInt(qualPrefix, 10) * 10000;
   let max = base;
 
   if (last > 1) {
@@ -89,30 +83,57 @@ function getNextId(qualPrefix) {
     }
   }
 
-  return String(max + 1); // e.g. 10001, 10002... 60001, 60002...
+  return String(max + 1);
 }
 
-// Looks up a trainee in their specific qualification sheet
-function findTrainee(id) {
-  const qualName = qualFromId(id);
-  if (!qualName) return null;
-
+// Looks up a trainee by 5-digit ID (e.g. 60001) or 4-digit badge (e.g. 0001)
+function findTrainee(code) {
+  const textCode = String(code || '').trim();
   const ss = SpreadsheetApp.getActive();
-  const sh = ss.getSheetByName(qualName);
-  if (!sh) return null;
 
-  const last = sh.getLastRow();
-  if (last <= 1) return null;
+  // 1. If 5-digit Trainee ID (e.g. 60001)
+  if (textCode.length === 5) {
+    const qualName = qualFromId(textCode);
+    if (!qualName) return null;
+    const sh = ss.getSheetByName(qualName);
+    if (!sh) return null;
+    const last = sh.getLastRow();
+    if (last <= 1) return null;
 
-  const rows = sh.getRange(2, 1, last - 1, 2).getValues();
-  for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]).trim() === String(id).trim()) {
-      return {
-        id: String(id).trim(),
-        name: String(rows[i][1]).trim(),
-        qualification: qualName
-      };
+    const rows = sh.getRange(2, 1, last - 1, 2).getValues();
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]).trim() === textCode) {
+        return {
+          id: textCode,
+          name: String(rows[i][1]).trim(),
+          qualification: qualName
+        };
+      }
     }
+    return null;
+  }
+
+  // 2. If 4-digit badge (e.g. 0001) -> check all 6 sheets for matching Q + 0001
+  if (textCode.length === 4) {
+    for (const [prefix, qualName] of Object.entries(QUALIFICATIONS)) {
+      const sh = ss.getSheetByName(qualName);
+      if (!sh) continue;
+      const last = sh.getLastRow();
+      if (last <= 1) continue;
+
+      const target5 = prefix + textCode; // e.g. 60001
+      const rows = sh.getRange(2, 1, last - 1, 2).getValues();
+      for (let i = 0; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() === target5) {
+          return {
+            id: target5,
+            name: String(rows[i][1]).trim(),
+            qualification: qualName
+          };
+        }
+      }
+    }
+    return null;
   }
 
   return null;
@@ -128,9 +149,6 @@ function reply(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-/* ═══════════════════════════════════════════
-   POST Dispatcher
-   ═══════════════════════════════════════════ */
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);
@@ -150,7 +168,7 @@ function doPost(e) {
   }
 }
 
-/* ── Register a trainee into their qualification sheet ── */
+// Registers a trainee into their qualification sheet (using QNNNN)
 function registerTrainee(body) {
   const name = String(body.name || '').trim();
   const qp   = String(body.qualification || '').trim();
@@ -165,10 +183,11 @@ function registerTrainee(body) {
     sh = ss.getSheetByName(qualName);
   }
 
-  const id = body.id ? String(body.id).trim() : getNextId(qp);
+  let id = body.id ? String(body.id).trim() : null;
+  if (!id || id.length !== 5) {
+    id = getNextId(qp);
+  }
 
-  // Save trainee record directly into their qualification sheet
-  // (Empty Date/Time In/Time Out until their first attendance scan)
   const row = sh.getLastRow() + 1;
   sh.getRange(row, 1).setNumberFormat('@').setValue(id);
   sh.getRange(row, 2).setValue(name);
@@ -177,18 +196,26 @@ function registerTrainee(body) {
   return reply({ status: 'ok', id: id, name: name, qualification: qualName });
 }
 
-/* ── Scan Attendance: Time In & Time Out ── */
+// Scans attendance for either 4-digit badge or 5-digit Trainee ID
 function recordScan(body) {
-  const id = String(body.id || '').trim();
-  const qualName = qualFromId(id);
-  if (!qualName) return reply({ status: 'invalid', message: 'Invalid ID prefix.' });
+  const code = String(body.id || '').trim();
+  const t = findTrainee(code);
 
+  // If badge or ID is not registered yet
+  if (!t) {
+    const badge4 = code.length === 4 ? code : (code.length === 5 ? code.slice(-4) : code);
+    return reply({
+      status: 'not_registered',
+      id: code,
+      badge: badge4
+    });
+  }
+
+  const id = t.id; // full 5-digit ID (e.g. 60001)
+  const qualName = t.qualification;
   const ss = SpreadsheetApp.getActive();
   const sh = ss.getSheetByName(qualName);
-  if (!sh) return reply({ status: 'not_registered', id: id });
-
-  const t = findTrainee(id);
-  if (!t) return reply({ status: 'not_registered', id: id });
+  if (!sh) return reply({ status: 'not_registered', id: id, badge: id.slice(-4) });
 
   const tz    = ss.getSpreadsheetTimeZone();
   const now   = new Date();
@@ -218,7 +245,6 @@ function recordScan(body) {
 
       // Check if trainee already has a record for TODAY
       if (rDate === today) {
-        // 1. Both Time In and Time Out already completed
         if (rTimeOut) {
           return reply({
             status: 'already_completed',
@@ -228,7 +254,6 @@ function recordScan(body) {
           });
         }
 
-        // 2. Before 3:00 PM -> Not time out yet
         if (hour < TIME_OUT_START) {
           return reply({
             status: 'not_time_out',
@@ -238,7 +263,6 @@ function recordScan(body) {
           });
         }
 
-        // 3. Between 3:00 PM and 5:00 PM (or afternoon) -> Record Time Out
         sh.getRange(i + 2, 5).setNumberFormat('@').setValue(stamp);
         return reply({
           status: 'time_out',
@@ -250,7 +274,6 @@ function recordScan(body) {
     }
   }
 
-  // If a pre-registered row with empty date exists, activate it with today's Time In
   if (placeholderRowIndex > 0) {
     sh.getRange(placeholderRowIndex, 3, 1, 3).setNumberFormat('@').setValues([[today, stamp, '']]);
     return reply({
@@ -262,7 +285,6 @@ function recordScan(body) {
     });
   }
 
-  // Otherwise, append a new attendance row for today
   const newRow = last + 1;
   sh.getRange(newRow, 1).setNumberFormat('@').setValue(id);
   sh.getRange(newRow, 2).setValue(t.name);
@@ -277,14 +299,12 @@ function recordScan(body) {
   });
 }
 
-/* ── Next ID query ── */
 function nextId(body) {
   const qp = String(body.qualification || '').trim();
   if (!QUALIFICATIONS[qp]) return reply({ status: 'error', message: 'Invalid qualification.' });
   return reply({ status: 'ok', id: getNextId(qp), qualification: QUALIFICATIONS[qp] });
 }
 
-/* ── Trainee lookup ── */
 function getTrainee(body) {
   const id = String(body.id || '').trim();
   const t = findTrainee(id);
@@ -292,17 +312,13 @@ function getTrainee(body) {
   return reply({ status: 'not_found', id: id });
 }
 
-/* ═══════════════════════════════════════════
-   GET: Read from the 6 Qualification Sheets
-   ═══════════════════════════════════════════ */
 function doGet(e) {
   try {
     const ss = SpreadsheetApp.getActive();
     const tz = ss.getSpreadsheetTimeZone();
     const records = [];
-    const traineesMap = {}; // { id: { id, name, qualification } }
+    const traineesMap = {};
 
-    // Read directly from each of the 6 qualification sheets
     for (const qualName of Object.values(QUALIFICATIONS)) {
       const sh = ss.getSheetByName(qualName);
       if (!sh) continue;
@@ -320,12 +336,10 @@ function doGet(e) {
 
         if (!rId) continue;
 
-        // Collect registered trainees
         if (rName && !traineesMap[rId]) {
           traineesMap[rId] = { id: rId, name: rName, qualification: qualName };
         }
 
-        // Only include in attendance records if Date and Time In are present
         if (rDate && rTimeIn) {
           records.push({
             id: rId,
