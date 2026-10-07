@@ -13,23 +13,29 @@
     <h1>Scan QR attendance</h1>
   </header>
 
-  <div id="reader" aria-label="Camera view"></div>
+  <div class="scanner-container">
+    <div id="reader" aria-label="Camera view"></div>
+    <div class="scanner-overlay">
+      <div class="scanner-laser"></div>
+    </div>
+  </div>
+
   <div id="result" role="status" aria-live="polite">Starting camera…</div>
   <button class="btn ghost" id="torch" hidden type="button">Toggle Flashlight</button>
 
-  <!-- On-the-fly Trainee Registration Modal (pops up only when scanned ID is not registered) -->
+  <!-- On-the-fly Trainee Registration Modal (pops up only when scanned 4-digit code is not registered) -->
   <div id="reg-modal" class="modal-backdrop" hidden>
     <div class="modal">
       <h2>Register Trainee</h2>
-      <p class="hint">This QR code is not registered yet. Enter the student's name to link it and record attendance now.</p>
+      <p class="hint">This 4-digit badge is not registered yet. Select the student's qualification and enter their name to assign their Trainee ID (QNNNN).</p>
       <form id="quick-reg-form" autocomplete="off">
         <div class="row">
           <div>
-            <label>Scanned Trainee ID</label>
-            <input id="reg-id-preview" type="text" readonly>
+            <label>Scanned 4-Digit Badge</label>
+            <input id="reg-badge-preview" type="text" readonly style="font-weight: 700;">
           </div>
           <div>
-            <label for="reg-qual">Qualification</label>
+            <label for="reg-qual">Select Qualification</label>
             <select id="reg-qual">
               <option value="1">1 - Cookery</option>
               <option value="2">2 - House Keeping</option>
@@ -41,6 +47,10 @@
           </div>
         </div>
         <div class="row">
+          <div>
+            <label>Assigned Trainee ID (QNNNN)</label>
+            <input id="reg-id-preview" type="text" readonly style="font-weight: 800; font-size: 1.15rem; color: var(--brand);">
+          </div>
           <div>
             <label for="reg-name">Full Name</label>
             <input id="reg-name" type="text" placeholder="Juan Dela Cruz" required>
@@ -55,17 +65,17 @@
   </div>
 
   <section class="panel">
-    <h2>Camera not working? Enter the Trainee ID</h2>
+    <h2>Camera not working? Enter Badge or Trainee ID</h2>
     <form id="manual-form" autocomplete="off">
       <div class="row">
         <div>
-          <label for="manual-id">Trainee ID (5 digits, e.g. 60001)</label>
-          <input id="manual-id" type="text" inputmode="numeric" maxlength="5" pattern="\d{5}" placeholder="60001">
+          <label for="manual-id">ID (4 digits e.g. 0001, or 5 digits e.g. 60001)</label>
+          <input id="manual-id" type="text" inputmode="numeric" maxlength="5" placeholder="0001 or 60001">
         </div>
         <button class="btn" type="submit">Record attendance</button>
       </div>
     </form>
-    <p class="hint">Allow camera access when prompted. Ensure the camera has good lighting and hold the QR code steady.</p>
+    <p class="hint">Ensure good lighting. Hold the QR code steady in front of the camera box.</p>
   </section>
 </main>
 
