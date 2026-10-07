@@ -165,7 +165,7 @@ function registerTrainee(body) {
     sh = ss.getSheetByName(qualName);
   }
 
-  const id = getNextId(qp);
+  const id = body.id ? String(body.id).trim() : getNextId(qp);
 
   // Save trainee record directly into their qualification sheet
   // (Empty Date/Time In/Time Out until their first attendance scan)
