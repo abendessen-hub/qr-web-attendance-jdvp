@@ -1,15 +1,16 @@
 const $ = function (id) { return document.getElementById(id); };
 
-async function verifyPassword(e) {
+async function verifyLogin(e) {
   e.preventDefault();
 
-  const enteredPassword = $('password-input').value;
+  const username = $('username-input').value;
+  const password = $('password-input').value;
 
   try {
     const response = await fetch('/.netlify/functions/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: enteredPassword })
+      body: JSON.stringify({ username: username, password: password })
     });
 
     const contentType = response.headers.get('content-type') || '';
@@ -35,14 +36,14 @@ async function verifyPassword(e) {
     const data = await response.json();
 
     if (data.success) {
-      window.location.href = 'front-end/html/home.html';
+      window.location.href = '/front-end/html/home.html';
     } else {
-      alert('Incorrect password. Access denied.');
+      alert('Incorrect username or password. Access denied.');
     }
   } catch (err) {
     alert(err.message);
-    console.error('Error submitting password:', err);
+    console.error('Error submitting login:', err);
   }
 }
 
-document.getElementById('login-form').addEventListener('submit', verifyPassword);
+document.getElementById('login-form').addEventListener('submit', verifyLogin);
