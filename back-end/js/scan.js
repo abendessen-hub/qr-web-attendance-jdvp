@@ -1,6 +1,5 @@
-// QR scanner: html5-qrcode 2.3.x
-// Integrates with Google Apps Script backend (Code.gs)
-// Handles: Time In, Time Out (3-5 PM), Not Time out yet, Completed today, On-the-fly Trainee Registration upon scan
+// High-Accuracy QR Scanner & Trainee Registration Controller
+// Supports 4-digit badges (0001) that become 5-digit Trainee IDs (QNNNN) upon qualification selection
 
 const resultEl = document.getElementById('result');
 const manualForm = document.getElementById('manual-form');
@@ -10,33 +9,33 @@ const torchBtn = document.getElementById('torch');
 // Quick registration modal elements
 const regModal = document.getElementById('reg-modal');
 const quickRegForm = document.getElementById('quick-reg-form');
+const regBadgePreview = document.getElementById('reg-badge-preview');
 const regQualSelect = document.getElementById('reg-qual');
 const regNameInput = document.getElementById('reg-name');
 const regIdPreview = document.getElementById('reg-id-preview');
 const regCancelBtn = document.getElementById('reg-cancel');
 
-const REQUIRED_READS = 2;
-const READ_WINDOW_MS = 1500;
-const SAME_CODE_COOLDOWN_MS = 4000;
+// Scanner tuning: 1 read for instant accuracy, generous 3s debounce per unique code
+const SAME_CODE_COOLDOWN_MS = 3000;
 const REQUEST_TIMEOUT_MS = 10000;
 
 let busy = false;
 let lastId = '';
 let lastAt = 0;
 let lastBadAt = 0;
-let candidate = { id: '', count: 0, first: 0 };
 let scanner = null;
 let running = false;
 let audioCtx = null;
+let currentScannedBadge = '0001';
 
-// ---------- feedback ----------
+// ---------- audio & haptic feedback ----------
 function beep(ok) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.frequency.value = ok ? 880 : 220;
-    gain.gain.value = 0.08;
+    gain.gain.value = 0.09;
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime + (ok ? 0.12 : 0.25));
   } catch (_) {}
@@ -56,7 +55,7 @@ window.addEventListener('pointerdown', function () {
   } catch (_) {}
 }, { once: true });
 
-// ---------- network ----------
+// ---------- network communication ----------
 async function postAction(payload) {
   const ctrl = new AbortController();
   const timer = setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS);
@@ -83,23 +82,24 @@ async function record(id) {
   }
 
   busy = true; lastId = id; lastAt = Date.now();
-  resultEl.className = ''; resultEl.textContent = 'Checking Trainee ' + id + '…';
+  resultEl.className = ''; resultEl.textContent = 'Checking ' + id + '…';
+
   try {
     const data = await postAction({ action: 'scan', id: id });
     
     if (data.status === 'time_in') {
-      show('ok', (data.name || 'Trainee') + ' (' + id + ') — Time In: ' + data.time);
+      show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime In: ' + data.time);
     } else if (data.status === 'time_out') {
-      show('ok', (data.name || 'Trainee') + ' (' + id + ') — Time Out: ' + data.time);
+      show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime Out: ' + data.time);
     } else if (data.status === 'not_time_out') {
       show('dup', 'Not Time out yet');
     } else if (data.status === 'already_completed') {
       show('dup', 'Attendance already completed for today.');
     } else if (data.status === 'not_registered') {
-      show('bad', 'Trainee ' + id + ' is not registered yet.');
+      show('bad', 'Badge ' + id + ' is not registered yet.');
       openQuickRegistration(id);
     } else if (data.status === 'invalid') {
-      show('bad', 'Invalid Trainee QR code.');
+      show('bad', 'Invalid QR code.');
     } else {
       show('bad', data.message || 'Could not record. Scan again.');
     }
@@ -107,20 +107,24 @@ async function record(id) {
     lastId = '';
     show('bad', 'No connection. Check internet and scan again.');
   } finally {
-    setTimeout(function () { busy = false; }, 1500);
+    setTimeout(function () { busy = false; }, 1200);
   }
 }
 
-// ---------- On-the-fly Trainee Registration ----------
-function openQuickRegistration(scannedId) {
-  if (scannedId && scannedId.length === 5) {
-    const prefix = scannedId.charAt(0);
-    if (QUALIFICATIONS[prefix]) {
-      regQualSelect.value = prefix;
-    }
-  }
-  regIdPreview.value = scannedId;
+// ---------- On-the-fly Trainee Registration Modal ----------
+function updateGeneratedIdPreview() {
+  const qp = regQualSelect.value;
+  // Keeps the 4 digits exactly the same, only prepending the qualification digit!
+  const fourDigits = currentScannedBadge.slice(-4);
+  const assignedId = qp + fourDigits;
+  regIdPreview.value = assignedId;
+}
+
+function openQuickRegistration(scannedCode) {
+  currentScannedBadge = scannedCode.slice(-4);
+  regBadgePreview.value = currentScannedBadge;
   regNameInput.value = '';
+  updateGeneratedIdPreview();
   regModal.hidden = false;
   regNameInput.focus();
 }
@@ -130,14 +134,15 @@ function closeQuickRegistration() {
   regNameInput.value = '';
 }
 
+regQualSelect.addEventListener('change', updateGeneratedIdPreview);
 regCancelBtn.addEventListener('click', closeQuickRegistration);
 
 quickRegForm.addEventListener('submit', async function (e) {
   e.preventDefault();
-  const id = regIdPreview.value.trim();
+  const assignedId = regIdPreview.value.trim(); // e.g. 60001
   const name = regNameInput.value.trim();
   const qp = regQualSelect.value;
-  if (!name || !id) return;
+  if (!name || !assignedId) return;
 
   await configReady;
   if (!apiReady()) {
@@ -145,47 +150,49 @@ quickRegForm.addEventListener('submit', async function (e) {
     return;
   }
 
-  show('', 'Registering ' + name + ' (' + id + ')…');
+  show('', 'Registering ' + name + ' (' + assignedId + ')…');
   try {
-    const regRes = await postAction({ action: 'register', id: id, name: name, qualification: qp });
+    const regRes = await postAction({
+      action: 'register',
+      id: assignedId,
+      name: name,
+      qualification: qp
+    });
+
     if (regRes.status !== 'ok') {
       alert(regRes.message || 'Registration failed.');
       return;
     }
 
     closeQuickRegistration();
-    show('ok', 'Registered: ' + regRes.name + ' (' + id + '). Recording attendance…');
+    show('ok', 'Registered: ' + regRes.name + ' (' + assignedId + '). Recording Time In…');
 
-    // Immediately record attendance for the newly registered trainee
+    // Immediately record attendance for this trainee
     busy = false;
-    record(id);
+    record(assignedId);
   } catch (err) {
     alert('Failed to register trainee: ' + err.message);
   }
 });
 
-// ---------- decode handling ----------
+// ---------- high-accuracy decode handling ----------
 function onScan(text) {
   if (busy || !regModal.hidden) return;
   const now = Date.now();
   const id = normalizeId(text);
 
   if (!id) {
-    candidate = { id: '', count: 0, first: 0 };
     if (now - lastBadAt > 2500) { lastBadAt = now; show('bad', 'Invalid QR code'); }
     return;
   }
 
-  if (id === lastId && now - lastAt < SAME_CODE_COOLDOWN_MS) { lastAt = now; return; }
-
-  if (candidate.id === id && now - candidate.first <= READ_WINDOW_MS) {
-    candidate.count++;
-  } else {
-    candidate = { id: id, count: 1, first: now };
+  // Same code still in front of camera: keep cooldown alive
+  if (id === lastId && now - lastAt < SAME_CODE_COOLDOWN_MS) {
+    lastAt = now;
+    return;
   }
-  if (candidate.count < REQUIRED_READS) return;
 
-  candidate = { id: '', count: 0, first: 0 };
+  // Instant 1-read recognition: fast and accurate
   record(id);
 }
 
@@ -193,11 +200,11 @@ manualForm.addEventListener('submit', function (e) {
   e.preventDefault();
   const id = normalizeId(manualInput.value);
   manualInput.value = '';
-  if (!id) { show('bad', 'Please enter a valid 5-digit Trainee ID (e.g. 60001)'); return; }
+  if (!id) { show('bad', 'Enter a 4-digit badge (e.g. 0001) or 5-digit ID (e.g. 60001)'); return; }
   record(id);
 });
 
-// ---------- camera ----------
+// ---------- high-accuracy camera initialization ----------
 function setupTorch() {
   if (!torchBtn) return;
   try {
@@ -216,6 +223,7 @@ function setupTorch() {
 async function startScanner() {
   if (running) return;
 
+  // Use native BarcodeDetector if available (hardware acceleration)
   scanner = scanner || new Html5Qrcode('reader', {
     formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
@@ -223,19 +231,21 @@ async function startScanner() {
   });
 
   const baseConfig = {
-    fps: 15,
+    fps: 24, // High framerate for snappy recognition
     disableFlip: true,
-    qrbox: function (w, h) {
-      const s = Math.floor(Math.min(w, h) * 0.7);
-      return { width: s, height: s };
+    qrbox: function (viewfinderWidth, viewfinderHeight) {
+      // 80% generous scan zone so user doesn't struggle to center the code
+      const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
+      return { width: edge, height: edge };
     }
   };
 
+  // High-def 720p constraints: optimal crispness for QR edges without latency
   const hiRes = Object.assign({}, baseConfig, {
     videoConstraints: {
       facingMode: { ideal: 'environment' },
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }
+      width: { ideal: 1280, min: 640 },
+      height: { ideal: 720, min: 480 }
     }
   });
 
@@ -247,15 +257,19 @@ async function startScanner() {
     }
     running = true;
 
-    try { await scanner.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (_) {}
-    setupTorch();
+    try {
+      await scanner.applyVideoConstraints({
+        advanced: [{ focusMode: 'continuous' }, { exposureMode: 'continuous' }]
+      });
+    } catch (_) {}
 
-    resultEl.textContent = 'Ready. Hold a trainee QR code in front of the camera.';
+    setupTorch();
+    resultEl.textContent = 'Ready. Hold QR code in front of the camera.';
   } catch (err) {
     const denied = err && (err.name === 'NotAllowedError' || /permission/i.test(String(err)));
     show('bad', denied
-      ? 'Camera blocked. Allow camera access or enter Trainee ID below.'
-      : 'Camera unavailable. Use HTTPS or enter Trainee ID below.');
+      ? 'Camera blocked. Allow camera permissions or use manual entry.'
+      : 'Camera unavailable. Use HTTPS or manual entry.');
   }
 }
 
