@@ -1,11 +1,19 @@
 // QR scanner: html5-qrcode 2.3.x
-// Expects these globals from your page: CONFIG, configReady, apiReady(), normalizeId()
-// Optional: <button id="torch" hidden>Torch</button> for a flashlight toggle.
+// Integrates with Google Apps Script backend (Code.gs)
+// Handles: Time In, Time Out (3-5 PM), Not Time out yet, Completed today, On-the-fly Trainee Registration
 
 const resultEl = document.getElementById('result');
 const manualForm = document.getElementById('manual-form');
 const manualInput = document.getElementById('manual-id');
 const torchBtn = document.getElementById('torch');
+
+// Quick registration modal elements
+const regModal = document.getElementById('reg-modal');
+const quickRegForm = document.getElementById('quick-reg-form');
+const regQualSelect = document.getElementById('reg-qual');
+const regNameInput = document.getElementById('reg-name');
+const regIdPreview = document.getElementById('reg-id-preview');
+const regCancelBtn = document.getElementById('reg-cancel');
 
 const REQUIRED_READS = 2;          // same code must decode this many times...
 const READ_WINDOW_MS = 1500;       // ...within this window (filters misreads)
@@ -50,13 +58,13 @@ window.addEventListener('pointerdown', function () {
 }, { once: true });
 
 // ---------- network ----------
-async function postId(id) {
+async function postAction(payload) {
   const ctrl = new AbortController();
   const timer = setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS);
   try {
     const res = await fetch(CONFIG.API_URL, {
       method: 'POST',
-      body: JSON.stringify({ id: id }),
+      body: JSON.stringify(payload),
       signal: ctrl.signal
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -76,37 +84,116 @@ async function record(id) {
   }
 
   busy = true; lastId = id; lastAt = Date.now();
-  resultEl.className = ''; resultEl.textContent = 'Checking ' + id + '…';
+  resultEl.className = ''; resultEl.textContent = 'Checking Trainee ' + id + '…';
   try {
-    const data = await postId(id);
-    if (data.status === 'ok') show('ok', id + ' recorded at ' + data.time);
-    else if (data.status === 'duplicate') show('dup', id + ' already recorded today');
-    else if (data.status === 'invalid') show('bad', 'Invalid QR code');
-    else show('bad', 'Could not record. Scan again.');
+    const data = await postAction({ action: 'scan', id: id });
+    
+    if (data.status === 'time_in') {
+      show('ok', (data.name || 'Trainee') + ' (' + id + ') — Time In: ' + data.time);
+    } else if (data.status === 'time_out') {
+      show('ok', (data.name || 'Trainee') + ' (' + id + ') — Time Out: ' + data.time);
+    } else if (data.status === 'not_time_out') {
+      show('dup', 'Not Time out yet');
+    } else if (data.status === 'already_completed') {
+      show('dup', 'Attendance already completed for today.');
+    } else if (data.status === 'not_registered') {
+      show('bad', 'Trainee ' + id + ' is not registered yet.');
+      openQuickRegistration(id);
+    } else if (data.status === 'invalid') {
+      show('bad', 'Invalid Trainee QR code.');
+    } else {
+      show('bad', data.message || 'Could not record. Scan again.');
+    }
   } catch (err) {
     lastId = '';   // allow an immediate rescan
-    show('bad', 'No connection. Scan again.');
+    show('bad', 'No connection. Check internet and scan again.');
   } finally {
-    setTimeout(function () { busy = false; }, 1200);
+    setTimeout(function () { busy = false; }, 1500);
   }
 }
 
+// ---------- On-the-fly Trainee Registration ----------
+async function refreshQuickRegId() {
+  const qp = regQualSelect.value;
+  regIdPreview.value = 'Calculating…';
+  try {
+    const data = await postAction({ action: 'getNextId', qualification: qp });
+    regIdPreview.value = data.id || '—';
+  } catch (_) {
+    regIdPreview.value = '—';
+  }
+}
+
+function openQuickRegistration(scannedId) {
+  // If the scanned ID has a valid qualification prefix (1-6), default to it
+  if (scannedId && scannedId.length === 5) {
+    const prefix = scannedId.charAt(0);
+    if (QUALIFICATIONS[prefix]) {
+      regQualSelect.value = prefix;
+    }
+  }
+  regNameInput.value = '';
+  regModal.hidden = false;
+  refreshQuickRegId();
+  regNameInput.focus();
+}
+
+function closeQuickRegistration() {
+  regModal.hidden = true;
+  regNameInput.value = '';
+}
+
+regQualSelect.addEventListener('change', refreshQuickRegId);
+regCancelBtn.addEventListener('click', closeQuickRegistration);
+
+quickRegForm.addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const name = regNameInput.value.trim();
+  const qp = regQualSelect.value;
+  if (!name) return;
+
+  await configReady;
+  if (!apiReady()) {
+    alert('API URL is not configured yet.');
+    return;
+  }
+
+  show('', 'Registering ' + name + '…');
+  try {
+    const regRes = await postAction({ action: 'register', name: name, qualification: qp });
+    if (regRes.status !== 'ok') {
+      alert(regRes.message || 'Registration failed.');
+      return;
+    }
+
+    const assignedId = regRes.id;
+    closeQuickRegistration();
+    show('ok', 'Registered: ' + regRes.name + ' (' + assignedId + '). Recording Time In…');
+
+    // Immediately record attendance for the newly registered trainee
+    busy = false;
+    record(assignedId);
+  } catch (err) {
+    alert('Failed to register trainee: ' + err.message);
+  }
+});
+
 // ---------- decode handling ----------
 function onScan(text) {
-  if (busy) return;
+  if (busy || !regModal.hidden) return;
   const now = Date.now();
   const id = normalizeId(text);
 
   if (!id) {
     candidate = { id: '', count: 0, first: 0 };
-    if (now - lastBadAt > 2000) { lastBadAt = now; show('bad', 'Invalid QR code'); }
+    if (now - lastBadAt > 2500) { lastBadAt = now; show('bad', 'Invalid QR code'); }
     return;
   }
 
-  // Same code still in front of the camera: keep the cooldown alive, do nothing
+  // Same code still in front of the camera: keep cooldown alive
   if (id === lastId && now - lastAt < SAME_CODE_COOLDOWN_MS) { lastAt = now; return; }
 
-  // Require repeated identical reads before trusting a code
+  // Require repeated identical reads before trusting code
   if (candidate.id === id && now - candidate.first <= READ_WINDOW_MS) {
     candidate.count++;
   } else {
@@ -122,7 +209,7 @@ manualForm.addEventListener('submit', function (e) {
   e.preventDefault();
   const id = normalizeId(manualInput.value);
   manualInput.value = '';
-  if (!id) { show('bad', 'Invalid ID'); return; }
+  if (!id) { show('bad', 'Please enter a valid 5-digit Trainee ID (e.g. 60001)'); return; }
   record(id);
 });
 
@@ -146,15 +233,14 @@ async function startScanner() {
   if (running) return;
 
   scanner = scanner || new Html5Qrcode('reader', {
-    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],   // QR only: faster, fewer false hits
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true }, // native detector where available
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
     verbose: false
   });
 
   const baseConfig = {
     fps: 15,
-    disableFlip: true,   // skip mirrored decode attempts
-    // scan area = 70% of the shorter side, so a code doesn't need to be perfectly centered
+    disableFlip: true,
     qrbox: function (w, h) {
       const s = Math.floor(Math.min(w, h) * 0.7);
       return { width: s, height: s };
@@ -173,21 +259,19 @@ async function startScanner() {
     try {
       await scanner.start({ facingMode: 'environment' }, hiRes, onScan, function () {});
     } catch (e) {
-      // Some devices reject the high-res constraints, so fall back to plain settings
       await scanner.start({ facingMode: 'environment' }, baseConfig, onScan, function () {});
     }
     running = true;
 
-    // Ask for continuous autofocus (ignored where unsupported)
     try { await scanner.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (_) {}
     setupTorch();
 
-    resultEl.textContent = 'Ready. Hold a QR code in front of the camera.';
+    resultEl.textContent = 'Ready. Hold a trainee QR code in front of the camera.';
   } catch (err) {
     const denied = err && (err.name === 'NotAllowedError' || /permission/i.test(String(err)));
     show('bad', denied
-      ? 'Camera blocked. Allow camera access or use manual entry.'
-      : 'Camera unavailable. Use HTTPS or manual entry.');
+      ? 'Camera blocked. Allow camera access or enter Trainee ID below.'
+      : 'Camera unavailable. Use HTTPS or enter Trainee ID below.');
   }
 }
 
@@ -197,7 +281,6 @@ async function stopScanner() {
   try { await scanner.stop(); } catch (_) {}
 }
 
-// Release the camera when the tab is hidden, restart when it comes back
 document.addEventListener('visibilitychange', function () {
   if (document.hidden) stopScanner();
   else startScanner();
