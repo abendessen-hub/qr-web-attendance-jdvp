@@ -1,18 +1,11 @@
-// High-Accuracy Scanner with "Snap Photo", "Undo/Retake", and Fallback Connection
+// Continuous QR scanner with live camera preview and fallback connection
 // Supports 4-digit badges (0001) that become 5-digit Trainee IDs (QNNNN)
 
 const resultEl = document.getElementById('result');
 const manualForm = document.getElementById('manual-form');
 const manualInput = document.getElementById('manual-id');
 const torchBtn = document.getElementById('torch');
-
-// Snap & Undo elements
-const snapBtn = document.getElementById('snap-btn');
-const undoBtn = document.getElementById('undo-btn');
-const snapshotContainer = document.getElementById('snapshot-container');
-const snapshotCanvas = document.getElementById('snapshot-canvas');
-const fileInput = document.getElementById('qr-file-input');
-const scannerOverlay = document.getElementById('scanner-overlay');
+const cameraStatus = document.getElementById('camera-status');
 
 // Quick registration modal elements
 const regModal = document.getElementById('reg-modal');
@@ -139,87 +132,6 @@ async function record(id) {
   }
 }
 
-// ---------- Snap Photo & Undo Features ----------
-function takeSnapshotFromVideo() {
-  const video = document.querySelector('#reader video');
-  if (!video) {
-    show('bad', 'Camera is not ready yet. Please wait a moment.');
-    return;
-  }
-
-  const w = video.videoWidth || 640;
-  const h = video.videoHeight || 480;
-  snapshotCanvas.width = w;
-  snapshotCanvas.height = h;
-
-  const ctx = snapshotCanvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, w, h);
-
-  // Display snapshot
-  snapshotContainer.hidden = false;
-  undoBtn.hidden = false;
-  if (scannerOverlay) scannerOverlay.hidden = true;
-
-  resultEl.className = '';
-  resultEl.textContent = 'Processing photo snapshot…';
-
-  // Convert canvas to blob and decode
-  snapshotCanvas.toBlob(async function (blob) {
-    if (!blob) {
-      show('bad', 'Could not capture photo. Try again.');
-      return;
-    }
-
-    try {
-      const file = new File([blob], 'snapshot.png', { type: 'image/png' });
-      const decodedText = await scanner.scanFile(file, true);
-      const validId = normalizeId(decodedText);
-      if (validId) {
-        record(validId);
-      } else {
-        show('bad', 'Invalid QR code in photo: ' + decodedText);
-      }
-    } catch (decodeErr) {
-      show('bad', 'Photo was blurry or no QR code was detected. Tap "Undo / Retake Photo" to try again.');
-    }
-  }, 'image/png');
-}
-
-function undoSnapshot() {
-  snapshotContainer.hidden = true;
-  undoBtn.hidden = true;
-  if (scannerOverlay) scannerOverlay.hidden = false;
-  resultEl.className = '';
-  resultEl.textContent = 'Ready. Hold QR code in front of the camera.';
-  busy = false;
-}
-
-snapBtn.addEventListener('click', takeSnapshotFromVideo);
-undoBtn.addEventListener('click', undoSnapshot);
-
-// Handle manual photo upload
-fileInput.addEventListener('change', async function () {
-  if (!fileInput.files || fileInput.files.length === 0) return;
-  const file = fileInput.files[0];
-  resultEl.className = '';
-  resultEl.textContent = 'Processing uploaded photo…';
-  undoBtn.hidden = false;
-
-  try {
-    const decodedText = await scanner.scanFile(file, true);
-    const validId = normalizeId(decodedText);
-    if (validId) {
-      record(validId);
-    } else {
-      show('bad', 'Invalid QR code in photo: ' + decodedText);
-    }
-  } catch (err) {
-    show('bad', 'Photo was blurry or no QR code found. Tap "Undo / Retake Photo" to retry.');
-  } finally {
-    fileInput.value = '';
-  }
-});
-
 // ---------- On-the-fly Trainee Registration Modal ----------
 function updateGeneratedIdPreview() {
   const qp = regQualSelect.value;
@@ -278,7 +190,7 @@ quickRegForm.addEventListener('submit', async function (e) {
 
 // ---------- Continuous Live Scan ----------
 function onScan(text) {
-  if (busy || !regModal.hidden || !snapshotContainer.hidden) return;
+  if (busy || !regModal.hidden) return;
   const now = Date.now();
   const id = normalizeId(text);
 
@@ -326,6 +238,8 @@ function setupTorch() {
 
 async function startScanner() {
   if (running) return;
+  cameraStatus.hidden = false;
+  cameraStatus.textContent = 'Starting camera…';
 
   scanner = scanner || new Html5Qrcode('reader', {
     formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
@@ -357,6 +271,7 @@ async function startScanner() {
       await scanner.start({ facingMode: 'environment' }, baseConfig, onScan, function () {});
     }
     running = true;
+    cameraStatus.hidden = true;
 
     try {
       await scanner.applyVideoConstraints({
@@ -368,6 +283,10 @@ async function startScanner() {
     resultEl.textContent = 'Hold QR code steady or tap "Snap Photo of QR".';
   } catch (err) {
     const denied = err && (err.name === 'NotAllowedError' || /permission/i.test(String(err)));
+    cameraStatus.hidden = false;
+    cameraStatus.textContent = denied
+      ? 'Camera access is blocked. Allow camera permission in your browser settings, then reload.'
+      : 'Camera unavailable. Use HTTPS, check browser camera permission, or use manual entry below.';
     show('bad', denied
       ? 'Camera blocked. Allow camera permissions or use manual entry below.'
       : 'Camera unavailable. Use HTTPS or manual entry below.');
@@ -382,7 +301,7 @@ async function stopScanner() {
 
 document.addEventListener('visibilitychange', function () {
   if (document.hidden) stopScanner();
-  else if (snapshotContainer.hidden) startScanner();
+  else startScanner();
 });
 
 startScanner();
