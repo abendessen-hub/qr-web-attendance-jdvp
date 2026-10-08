@@ -124,18 +124,27 @@ input::placeholder{color:#7d8998}
 .qr-card small{display:block;font-size:.85rem;color:var(--muted);line-height:1.2;margin-top:2px}
 
 /* progress dashboard & stats */
-.stats-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:12px}
-.stat-card{background:var(--surface);padding:14px;border:1px solid var(--line);border-radius:var(--radius);text-align:center}
-.stat-num{display:block;font-size:2rem;font-weight:800;color:var(--brand);line-height:1.1}
-.stat-label{display:block;font-size:.85rem;color:var(--muted);margin-top:4px}
+.stats-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:14px}
+.stat-card{background:var(--surface);padding:18px 20px;border:1px solid var(--line);border-top:3px solid var(--brand);border-radius:var(--radius);text-align:left;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:transform .18s ease,box-shadow .18s ease}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(28,63,148,0.08)}
+.stat-num{display:block;font-size:2.25rem;font-weight:800;color:var(--brand);line-height:1.1;letter-spacing:-.02em}
+.stat-label{display:block;font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:6px}
 
-.chart-container{margin-top:14px;display:flex;flex-direction:column;gap:8px}
-.chart-loading,.table-empty{padding:14px;color:var(--muted);text-align:center;font-style:italic}
-.chart-row{display:flex;align-items:center;gap:10px;font-size:.9rem}
-.chart-label{flex:0 0 9.5rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chart-bar-wrap{flex:1 1 auto;background:#e2e6eb;height:24px;border-radius:4px;overflow:hidden}
-.chart-bar-fill{background:var(--brand);height:100%;border-radius:4px;transition:width .3s ease}
-.chart-count{flex:0 0 5.5rem;text-align:right;font-weight:700;color:var(--ink)}
+.chart-container{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.chart-loading,.table-empty{padding:24px;color:var(--muted);text-align:center;font-style:italic}
+.chart-row{display:grid;grid-template-columns:12rem 1fr 6.5rem;align-items:center;gap:14px;padding:8px 12px;border-radius:var(--radius);transition:background-color .18s ease}
+.chart-row:hover{background:#f1f5f9}
+.chart-label{font-weight:600;font-size:.92rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chart-bar-wrap{background:#e2e6eb;height:26px;border-radius:6px;overflow:hidden;position:relative}
+.chart-bar-fill{background:linear-gradient(90deg,var(--brand),#2563eb);height:100%;border-radius:5px;width:0%;transition:width .75s cubic-bezier(0.16,1,0.3,1)}
+.chart-count{text-align:right;font-weight:700;font-size:.9rem;color:var(--brand-dark);white-space:nowrap}
+.chart-count .unit{font-weight:500;font-size:.8rem;color:var(--muted)}
+@media (max-width:600px){
+  .chart-row{grid-template-columns:1fr auto;grid-template-areas:"label count" "bar bar";gap:6px}
+  .chart-label{grid-area:label}
+  .chart-count{grid-area:count}
+  .chart-bar-wrap{grid-area:bar}
+}
 
 /* tables */
 .stats{display:flex;flex-wrap:wrap;gap:6px 22px;margin:8px 0 12px;color:var(--muted)}
@@ -149,6 +158,10 @@ th{position:sticky;top:0;background:#e3e8ee;font-size:.88rem;font-weight:600;
 tbody tr:hover{background:#f3f6fa}
 tbody tr:last-child td{border-bottom:0}
 .text-muted{color:var(--muted);font-style:italic}
+.id-badge{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-weight:700;color:var(--ink)}
+.badge-qual{display:inline-block;padding:3px 8px;border-radius:4px;font-size:.8rem;font-weight:600;background:var(--brand-tint);color:var(--brand);border:1px solid #bfdbfe;white-space:nowrap}
+.tag-done{color:#166534;font-weight:600}
+.tag-pending{color:#9a3412;background:#ffedd5;padding:2px 7px;border-radius:4px;font-size:.8rem;font-weight:600}
 #table-message,#trainees-msg{padding:18px;color:var(--muted);text-align:center}
 
 /* Screen Grid */
@@ -156,52 +169,65 @@ tbody tr:last-child td{border-bottom:0}
 
 /* ========================================================
    A4 PRINT LAYOUT SPECIFICATION
-   - Fits standard A4 (210mm x 297mm) perfectly
-   - Centers content with even 12mm margins
-   - 3 columns x 4 rows per page = 12 badges per sheet
+   - Fits standard A4 (210mm x 297mm) portrait
+   - 3 columns x 3 rows = 9 QR badges per sheet
+   - Large, easily scannable format with clear cut lines
    ======================================================== */
-@page{size:A4 portrait;margin:12mm}
+@page{size:A4 portrait;margin:10mm}
 @media print{
-  html,body{background:#fff!important;color:#000!important;margin:0!important;padding:0!important}
-  header.top,.panel,.btn,footer,.no-print,.stats,#result,#reader,#manual-form,.modal-backdrop,.scanner-laser,.scan-controls{
+  html,body{background:#fff!important;color:#000!important;margin:0!important;padding:0!important;font-size:10pt!important}
+  header.top,.panel,.btn,footer,.no-print,.stats,#result,#reader,#manual-form,.modal-backdrop,.scanner-laser,.scan-controls,#progress,.hint{
     display:none!important
   }
   .wrap{max-width:none!important;margin:0!important;padding:0!important;width:100%!important}
   #grid{
     display:grid!important;
     grid-template-columns:repeat(3, 1fr)!important;
-    gap:8mm!important;
+    gap:6mm!important;
     margin:0 auto!important;
     width:100%!important;
     justify-content:center!important;
     align-content:start!important;
   }
   .qr-card{
-    border:1.5px dashed #555!important;
+    border:1.5px dashed #475569!important;
     border-radius:6px!important;
-    padding:5mm 4mm!important;
-    page-break-inside:avoid!important;
-    break-inside:avoid!important;
-    background:#fff!important;
+    padding:4mm 3mm!important;
     box-sizing:border-box!important;
     width:100%!important;
+    height:84mm!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    background:#fff!important;
+    page-break-inside:avoid!important;
+    break-inside:avoid!important;
+  }
+  .qr-card:nth-child(9n){
+    page-break-after:always!important;
+    break-after:page!important;
   }
   .qr-card img{
-    width:42mm!important;
-    height:42mm!important;
+    width:54mm!important;
+    height:54mm!important;
     display:block!important;
     margin:0 auto!important;
   }
   .qr-card span{
-    font-size:12pt!important;
-    font-weight:bold!important;
-    margin-top:2mm!important;
+    font-size:14pt!important;
+    font-weight:800!important;
+    letter-spacing:.06em!important;
     color:#000!important;
+    margin-top:2.5mm!important;
+    line-height:1.1!important;
   }
   .qr-card small{
     font-size:9pt!important;
-    color:#333!important;
+    color:#334155!important;
     display:block!important;
+    margin-top:1mm!important;
   }
 }
 

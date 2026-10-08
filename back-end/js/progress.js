@@ -136,7 +136,7 @@ function renderDailyHistoryAndChart() {
 
   const maxDaily = Math.max(...Object.values(dateCounts), 1);
 
-  dates.forEach(function (d) {
+  dates.forEach(function (d, idx) {
     const count = dateCounts[d];
     const pct = Math.round((count / maxDaily) * 100);
 
@@ -152,11 +152,11 @@ function renderDailyHistoryAndChart() {
 
     const barFill = document.createElement('div');
     barFill.className = 'chart-bar-fill';
-    barFill.style.width = Math.max(pct, 4) + '%';
+    barFill.style.width = '0%'; // Start collapsed for smooth animation
 
     const countSpan = document.createElement('div');
     countSpan.className = 'chart-count';
-    countSpan.textContent = count;
+    countSpan.innerHTML = count + ' <span class="unit">(' + pct + '%)</span>';
 
     barWrap.appendChild(barFill);
     row.appendChild(label);
@@ -164,6 +164,11 @@ function renderDailyHistoryAndChart() {
     row.appendChild(countSpan);
 
     chartContainer.appendChild(row);
+
+    // Smooth staggered bar grow animation
+    setTimeout(function () {
+      barFill.style.width = Math.max(pct, 4) + '%';
+    }, 40 + idx * 35);
   });
 }
 
@@ -177,13 +182,19 @@ function renderQualificationProgress() {
   QUAL_LIST.forEach(function (q) { qualStudents[q] = new Set(); });
 
   allRecords.forEach(function (r) {
-    if (r.qualification && qualStudents[r.qualification]) {
+    if (r.qualification) {
+      if (!qualStudents[r.qualification]) {
+        qualStudents[r.qualification] = new Set();
+        if (!QUAL_LIST.includes(r.qualification)) {
+          QUAL_LIST.push(r.qualification);
+        }
+      }
       qualStudents[r.qualification].add(r.id);
     }
   });
 
   QUAL_LIST.forEach(function (q) {
-    qualCounts[q] = qualStudents[q].size;
+    qualCounts[q] = qualStudents[q] ? qualStudents[q].size : 0;
   });
 
   const chartContainer = $('qual-chart');
@@ -191,8 +202,8 @@ function renderQualificationProgress() {
 
   const maxQual = Math.max(...Object.values(qualCounts), 1);
 
-  QUAL_LIST.forEach(function (q) {
-    const count = qualCounts[q];
+  QUAL_LIST.forEach(function (q, idx) {
+    const count = qualCounts[q] || 0;
     const pct = Math.round((count / maxQual) * 100);
 
     const row = document.createElement('div');
@@ -207,11 +218,11 @@ function renderQualificationProgress() {
 
     const barFill = document.createElement('div');
     barFill.className = 'chart-bar-fill';
-    barFill.style.width = count === 0 ? '0%' : Math.max(pct, 4) + '%';
+    barFill.style.width = '0%'; // Start collapsed for smooth animation
 
     const countSpan = document.createElement('div');
     countSpan.className = 'chart-count';
-    countSpan.textContent = count + ' students';
+    countSpan.innerHTML = count + ' <span class="unit">' + (count === 1 ? 'trainee' : 'trainees') + '</span>';
 
     barWrap.appendChild(barFill);
     row.appendChild(label);
@@ -219,6 +230,11 @@ function renderQualificationProgress() {
     row.appendChild(countSpan);
 
     chartContainer.appendChild(row);
+
+    // Smooth staggered bar grow animation
+    setTimeout(function () {
+      barFill.style.width = count === 0 ? '0%' : Math.max(pct, 4) + '%';
+    }, 40 + idx * 35);
   });
 }
 
@@ -245,13 +261,13 @@ function renderFilteredTable() {
     const tr = document.createElement('tr');
     
     const tdId = document.createElement('td');
-    tdId.innerHTML = '<strong>' + (r.id || '—') + '</strong>';
+    tdId.innerHTML = '<span class="id-badge">' + (r.id || '—') + '</span>';
 
     const tdName = document.createElement('td');
     tdName.textContent = r.name || '—';
 
     const tdQual = document.createElement('td');
-    tdQual.textContent = r.qualification || '—';
+    tdQual.innerHTML = '<span class="badge-qual">' + (r.qualification || '—') + '</span>';
 
     const tdDate = document.createElement('td');
     tdDate.textContent = r.date || '—';
@@ -260,10 +276,10 @@ function renderFilteredTable() {
     tdIn.textContent = r.timeIn || '—';
 
     const tdOut = document.createElement('td');
-    tdOut.textContent = r.timeOut || '—';
-    if (!r.timeOut) {
-      tdOut.className = 'text-muted';
-      tdOut.textContent = 'Pending';
+    if (r.timeOut) {
+      tdOut.innerHTML = '<span class="tag-done">' + r.timeOut + '</span>';
+    } else {
+      tdOut.innerHTML = '<span class="tag-pending">Pending</span>';
     }
 
     tr.append(tdId, tdName, tdQual, tdDate, tdIn, tdOut);
