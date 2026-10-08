@@ -106,23 +106,49 @@ async function postAction(payload) {
   throw lastError || new Error('All connection attempts failed.');
 }
 
+// Local cache for instant recognition and zero duplicate latency
+const todayAttendanceCache = new Map();
+
 async function record(id) {
   if (busy) return;
 
+  const now = new Date();
+  const currentHour = now.getHours();
+
+  // Instant check from cache: eliminates delay when badge was already processed
+  if (todayAttendanceCache.has(id)) {
+    const cached = todayAttendanceCache.get(id);
+    if (cached.status === 'already_completed' || cached.status === 'time_out') {
+      show('dup', (cached.name || 'Trainee') + ' (' + id + ')\nAttendance already completed for today.');
+      lastId = id; lastAt = Date.now();
+      return;
+    }
+    if (cached.status === 'time_in' && currentHour < 15) {
+      show('dup', (cached.name || 'Trainee') + ' (' + id + ')\nTime In: ' + (cached.timeIn || 'Recorded') + '\nNot Time out yet (Window: 3:00 PM - 5:00 PM)');
+      lastId = id; lastAt = Date.now();
+      return;
+    }
+  }
+
   busy = true; lastId = id; lastAt = Date.now();
-  resultEl.className = ''; resultEl.textContent = 'Recording ' + id + '…';
+  resultEl.className = 'processing';
+  resultEl.textContent = 'Verifying ID ' + id + '…';
 
   try {
     const data = await postAction({ action: 'scan', id: id });
     
     if (data.status === 'time_in') {
+      todayAttendanceCache.set(id, { name: data.name, status: 'time_in', timeIn: data.time });
       show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime In: ' + data.time);
     } else if (data.status === 'time_out') {
+      todayAttendanceCache.set(id, { name: data.name, status: 'time_out', timeOut: data.time });
       show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime Out: ' + data.time);
     } else if (data.status === 'not_time_out') {
-      show('dup', 'Not Time out yet');
+      todayAttendanceCache.set(id, { name: data.name, status: 'not_time_out', timeIn: data.timeIn || '' });
+      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Not Time out yet (Window: 3:00 PM - 5:00 PM)');
     } else if (data.status === 'already_completed') {
-      show('dup', 'Attendance already completed for today.');
+      todayAttendanceCache.set(id, { name: data.name, status: 'already_completed' });
+      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Attendance already completed for today.');
     } else if (data.status === 'not_registered') {
       show('bad', 'Badge ' + id + ' is not registered yet.');
       openQuickRegistration(id);
@@ -139,7 +165,7 @@ async function record(id) {
       show('bad', 'Connection error: ' + (err.message || 'Please check network and try again.'));
     }
   } finally {
-    setTimeout(function () { busy = false; }, 1200);
+    setTimeout(function () { busy = false; }, 350);
   }
 }
 
@@ -152,7 +178,7 @@ function updateQualHint() {
   const qp = getSelectedQualification();
   if (!qp || !QUALIFICATIONS[qp]) {
     if (qualHint) {
-      qualHint.innerHTML = '⚠️ <strong>Please select a qualification first</strong> before scanning or manual entry.';
+      qualHint.innerHTML = '<strong>Please select a qualification first</strong> before scanning or manual entry.';
     }
     if (!busy) {
       resultEl.textContent = 'Please select a qualification above to begin.';
@@ -295,8 +321,7 @@ function onScan(text) {
     return;
   }
 
-  if (id === lastId && now - lastAt < SAME_CODE_COOLDOWN_MS) {
-    lastAt = now;
+  if (id === lastId && now - lastAt < 2000) {
     return;
   }
 
@@ -350,29 +375,22 @@ async function startScanner() {
     verbose: false
   });
 
-  const baseConfig = {
-    fps: 24,
+  const fastConfig = {
+    fps: 20,
     disableFlip: true,
     qrbox: function (w, h) {
-      const edge = Math.floor(Math.min(w, h) * 0.75);
+      const edge = Math.floor(Math.min(w, h) * 0.72);
       return { width: edge, height: edge };
+    },
+    videoConstraints: {
+      facingMode: { ideal: 'environment' },
+      width: { ideal: 1280, min: 640 },
+      height: { ideal: 720, min: 480 }
     }
   };
 
-  const hiRes = Object.assign({}, baseConfig, {
-    videoConstraints: {
-      facingMode: { ideal: 'environment' },
-      width: { ideal: 1920, min: 640 },
-      height: { ideal: 1080, min: 480 }
-    }
-  });
-
   try {
-    try {
-      await scanner.start({ facingMode: 'environment' }, hiRes, onScan, function () {});
-    } catch (e) {
-      await scanner.start({ facingMode: 'environment' }, baseConfig, onScan, function () {});
-    }
+    await scanner.start({ facingMode: 'environment' }, fastConfig, onScan, function () {});
     running = true;
     cameraStatus.hidden = true;
 
