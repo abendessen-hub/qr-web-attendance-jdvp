@@ -201,6 +201,29 @@ if (savedQual && QUALIFICATIONS[savedQual] && scanQualSelect) {
 }
 updateQualHint();
 
+configReady.then(function () {
+  if (!CONFIG.IS_ADMIN) {
+    const assignedQual = CONFIG.QUALIFICATION;
+    for (const option of scanQualSelect.options) {
+      if (option.value !== assignedQual) option.hidden = true;
+    }
+    for (const option of regQualSelect.options) {
+      if (option.value !== assignedQual) option.hidden = true;
+    }
+    scanQualSelect.value = assignedQual;
+    scanQualSelect.disabled = true;
+    regQualSelect.value = assignedQual;
+    regQualSelect.disabled = true;
+    localStorage.setItem('jdvp_selected_qual', assignedQual);
+  } else {
+    scanQualSelect.disabled = false;
+    regQualSelect.disabled = false;
+  }
+  updateQualHint();
+}).catch(function (err) {
+  show('bad', err.message || 'Could not verify account access.');
+});
+
 if (scanQualSelect) {
   scanQualSelect.addEventListener('change', function () {
     const val = scanQualSelect.value;
@@ -342,7 +365,7 @@ manualForm.addEventListener('submit', function (e) {
   const id = resolveTraineeId(raw);
   manualInput.value = '';
   if (!id) {
-    show('bad', 'Please enter a 4-digit badge (e.g. 0001) or 5-digit ID for ' + QUALIFICATIONS[selectedQual]);
+    show('bad', 'Please enter a 4-digit badge (e.g. 0001) for ' + QUALIFICATIONS[selectedQual]);
     return;
   }
   record(id);

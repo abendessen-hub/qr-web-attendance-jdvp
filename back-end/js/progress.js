@@ -6,7 +6,7 @@ const $ = function (id) { return document.getElementById(id); };
 let allRecords = [];
 let allTrainees = [];
 
-const QUAL_LIST = [
+const ALL_QUAL_LIST = [
   'Cookery',
   'House Keeping',
   'CSS',
@@ -49,6 +49,15 @@ async function loadAllData() {
   $('qual-chart').innerHTML = '<div class="chart-loading">Loading statistics…</div>';
 
   try {
+    if (!CONFIG.IS_ADMIN) {
+      const assignedName = QUALIFICATIONS[CONFIG.QUALIFICATION];
+      $('filter-qual').value = assignedName;
+      $('filter-qual').disabled = true;
+      for (const option of $('filter-qual').options) {
+        if (option.value && option.value !== assignedName) option.hidden = true;
+      }
+    }
+
     // 1. Fetch attendance records
     const res = await fetch(CONFIG.API_URL);
     const data = await res.json();
@@ -174,26 +183,29 @@ function renderDailyHistoryAndChart() {
 
 // ─── Qualification Progress Chart ───
 function renderQualificationProgress() {
+  const qualifications = CONFIG.IS_ADMIN
+    ? ALL_QUAL_LIST.slice()
+    : [QUALIFICATIONS[CONFIG.QUALIFICATION]];
   const qualCounts = {};
-  QUAL_LIST.forEach(function (q) { qualCounts[q] = 0; });
+  qualifications.forEach(function (q) { qualCounts[q] = 0; });
 
   // Count unique trainees per qualification from records
   const qualStudents = {};
-  QUAL_LIST.forEach(function (q) { qualStudents[q] = new Set(); });
+  qualifications.forEach(function (q) { qualStudents[q] = new Set(); });
 
   allRecords.forEach(function (r) {
     if (r.qualification) {
       if (!qualStudents[r.qualification]) {
         qualStudents[r.qualification] = new Set();
-        if (!QUAL_LIST.includes(r.qualification)) {
-          QUAL_LIST.push(r.qualification);
+        if (CONFIG.IS_ADMIN && !qualifications.includes(r.qualification)) {
+          qualifications.push(r.qualification);
         }
       }
       qualStudents[r.qualification].add(r.id);
     }
   });
 
-  QUAL_LIST.forEach(function (q) {
+  qualifications.forEach(function (q) {
     qualCounts[q] = qualStudents[q] ? qualStudents[q].size : 0;
   });
 
@@ -202,7 +214,7 @@ function renderQualificationProgress() {
 
   const maxQual = Math.max(...Object.values(qualCounts), 1);
 
-  QUAL_LIST.forEach(function (q, idx) {
+  qualifications.forEach(function (q, idx) {
     const count = qualCounts[q] || 0;
     const pct = Math.round((count / maxQual) * 100);
 

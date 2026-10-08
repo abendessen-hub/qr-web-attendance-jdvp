@@ -10,7 +10,7 @@
    ```
 
 3. Create a `.env` file in the project root from `.env.example` and set:
-   - `ACCOUNTS`: comma-separated `username:password` pairs.
+   - `ACCOUNTS`: comma-separated `username:password:qualification` entries, where qualification is `1`–`6`; use `all` for an administrator. Legacy `username:password` entries are assigned by list order (entries 1–6 get their matching qualification and entry 7 is administrator).
    - `AUTH_SECRET`: a long, random secret used to sign login cookies.
    - `API_URL`: the deployed Google Apps Script Web App URL.
 4. Start the site and its Vercel Functions:
@@ -24,6 +24,10 @@
 
 The local `.env` file is ignored by Git. Replace the example account values with
 strong credentials before deployment.
+
+Each account's qualification is enforced by the authenticated API, including
+attendance and trainee registration. Put the qualification number in each
+account entry explicitly to avoid relying on list order.
 
 ## Deploy to Vercel
 

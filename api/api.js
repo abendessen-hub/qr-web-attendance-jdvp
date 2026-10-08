@@ -1,6 +1,6 @@
 const https = require('node:https');
 const http = require('node:http');
-const { json, isAuthenticated, parseJsonBody } = require('../api-lib/auth');
+const { json, getSession, parseJsonBody } = require('../api-lib/auth');
 
 function requestWithRedirects(targetUrl, method, postBody, redirectCount = 0) {
   if (redirectCount > 5) return Promise.reject(new Error('Too many redirects'));
@@ -36,8 +36,10 @@ function sanitizeString(value, maxLength = 80) {
 }
 
 module.exports = async function proxy(req, res) {
+  let session;
   try {
-    if (!isAuthenticated(req)) {
+    session = getSession(req);
+    if (!session) {
       return json(res, 401, { status: 'error', message: 'Unauthorized. Session expired or not logged in.' });
     }
   } catch (_) {
@@ -55,11 +57,38 @@ module.exports = async function proxy(req, res) {
     let target = process.env.API_URL;
     let body;
 
-    if (req.method === 'POST' && req.body !== undefined) {
+    if (req.method === 'POST') {
       const parsed = parseJsonBody(req);
       const allowedActions = ['scan', 'register', 'getNextId', 'getTrainee'];
-      if (parsed.action && !allowedActions.includes(parsed.action)) {
+      if (!allowedActions.includes(parsed.action)) {
         return json(res, 400, { status: 'error', message: 'Invalid action.' });
+      }
+      if (!session.admin) {
+        const qualification = session.qualification;
+        const suppliedQualification = parsed.qualification;
+        if (suppliedQualification !== undefined && String(suppliedQualification) !== qualification) {
+          return json(res, 403, { status: 'error', message: 'This account can only access its assigned qualification.' });
+        }
+        if (parsed.action === 'register' || parsed.action === 'getNextId') {
+          if (String(suppliedQualification || '') !== qualification) {
+            return json(res, 403, { status: 'error', message: 'This account can only access its assigned qualification.' });
+          }
+        }
+        if (parsed.action === 'register' && parsed.id &&
+            !new RegExp('^' + qualification + '\\d{4}$').test(String(parsed.id).trim())) {
+          return json(res, 403, { status: 'error', message: 'This account can only register trainees for its assigned qualification.' });
+        }
+        if (parsed.action === 'scan' || parsed.action === 'getTrainee') {
+          const id = String(parsed.id || '').trim();
+          if (!/^\d{1,5}$/.test(id)) {
+            return json(res, 400, { status: 'error', message: 'Invalid trainee ID.' });
+          }
+          if (id.length === 5 && id.charAt(0) !== qualification) {
+            return json(res, 403, { status: 'error', message: 'This account can only access its assigned qualification.' });
+          }
+          parsed.id = id.length === 5 ? id : qualification + id.padStart(4, '0');
+          parsed.qualification = qualification;
+        }
       }
       if (parsed.name) parsed.name = sanitizeString(parsed.name, 70);
       if (parsed.id) parsed.id = sanitizeString(parsed.id, 10);
@@ -67,7 +96,13 @@ module.exports = async function proxy(req, res) {
     }
 
     if (req.method === 'GET' && req.url) {
-      const query = new URL(req.url, 'https://vercel.invalid').search;
+      const requestUrl = new URL(req.url, 'https://vercel.invalid');
+      const requestedQualification = requestUrl.searchParams.get('qualification');
+      if (!session.admin && requestedQualification && requestedQualification !== session.qualification) {
+        return json(res, 403, { status: 'error', message: 'This account can only access its assigned qualification.' });
+      }
+      if (!session.admin) requestUrl.searchParams.set('qualification', session.qualification);
+      const query = requestUrl.search;
       if (query) target += (target.includes('?') ? '&' : '?') + query.slice(1);
     }
 
@@ -80,6 +115,25 @@ module.exports = async function proxy(req, res) {
         status: 'error',
         message: 'Google Apps Script returned HTML instead of JSON. Redeploy it as a Web app with access set to Anyone, then verify API_URL uses the current /exec URL.'
       });
+    }
+
+    if (!session.admin && responseBody && typeof responseBody === 'object') {
+      const qualificationNames = {
+        '1': 'Cookery',
+        '2': 'House Keeping',
+        '3': 'CSS',
+        '4': 'EIM',
+        '5': 'SMAW NC I',
+        '6': 'SMAW NC II'
+      };
+      const qualificationName = qualificationNames[session.qualification];
+      for (const key of ['records', 'trainees']) {
+        if (Array.isArray(responseBody[key])) {
+          responseBody[key] = responseBody[key].filter((record) =>
+            record && record.qualification === qualificationName
+          );
+        }
+      }
     }
 
     res.statusCode = response.statusCode || 200;

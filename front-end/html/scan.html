@@ -17,14 +17,14 @@
   <section class="panel qual-select-panel">
     <label for="scan-qual"><strong>1. Select Qualification:</strong></label>
     <div class="row" style="margin: 6px 0 0;">
-      <select id="scan-qual" required>
+      <select id="scan-qual" required disabled>
         <option value="" disabled selected>-- Select Qualification (Required) --</option>
         <option value="1">1 - Cookery</option>
         <option value="2">2 - House Keeping</option>
         <option value="3">3 - Computer System Servicing (CSS)</option>
         <option value="4">4 - Electrical Installation and Maintenance (EIM)</option>
-        <option value="5">5 - Shielded Metal Arc Welding (SMAW) NC II</option>
-        <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC III</option>
+        <option value="5">5 - Shielded Metal Arc Welding (SMAW) NC I</option>
+        <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC II</option>
       </select>
     </div>
     <p class="hint" id="qual-hint">Select a qualification first. Scanned 4-digit badges will be recorded for that qualification.</p>
@@ -60,13 +60,13 @@
           </div>
           <div>
             <label for="reg-qual">Select Qualification</label>
-            <select id="reg-qual">
+            <select id="reg-qual" disabled>
               <option value="1">1 - Cookery</option>
               <option value="2">2 - House Keeping</option>
               <option value="3">3 - Computer System Servicing (CSS)</option>
               <option value="4">4 - Electrical Installation and Maintenance (EIM)</option>
-              <option value="5">5 - Shielded Metal Arc Welding (SMAW) NC II</option>
-              <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC III</option>
+              <option value="5">5 - Shielded Metal Arc Welding (SMAW) NC I</option>
+              <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC II</option>
             </select>
           </div>
         </div>
@@ -94,13 +94,13 @@
     <form id="manual-form" autocomplete="off">
       <div class="row">
         <div>
-          <label for="manual-id">Student ID (4 digits e.g. 0001, or 5 digits e.g. 60001)</label>
-          <input id="manual-id" type="text" inputmode="numeric" maxlength="5" placeholder="0001 or 60001">
+          <label for="manual-id">Student ID (4 digits e.g. 0001)</label>
+          <input id="manual-id" type="text" inputmode="numeric" maxlength="4" placeholder="0001">
         </div>
         <button class="btn" type="submit">Record attendance</button>
       </div>
     </form>
-    <p class="hint">Type the 4-digit badge code (e.g. 0001) or the 5-digit Trainee ID (e.g. 60001).</p>
+    <p class="hint">Type the 4-digit badge code (e.g. 0001) </p>
   </section>
 </main>
 

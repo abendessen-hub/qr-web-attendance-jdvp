@@ -23,24 +23,44 @@ function sign(value) {
   return crypto.createHmac('sha256', getSecret()).update(value).digest('base64url');
 }
 
-function createToken() {
+function createToken(session = {}) {
   const expires = String(Math.floor(Date.now() / 1000) + MAX_AGE);
-  return expires + '.' + sign(expires);
+  const payload = Buffer.from(JSON.stringify({
+    qualification: session.qualification || null,
+    admin: session.admin === true
+  })).toString('base64url');
+  const value = expires + '.' + payload;
+  return value + '.' + sign(value);
 }
 
-function isValidToken(token) {
-  if (!token) return false;
-  const [expires, signature] = token.split('.');
-  if (!expires || !signature || Number(expires) < Date.now() / 1000) return false;
+function getSession(req) {
+  const cookie = req.headers.cookie || '';
+  const match = cookie.match(/(?:^|;\s*)auth_token=([^;]+)/);
+  const token = match ? match[1] : null;
+  if (!token) return null;
+
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [expires, payload, signature] = parts;
+  if (!expires || !payload || !signature || !Number.isFinite(Number(expires)) ||
+      Number(expires) < Date.now() / 1000) return null;
+  const value = expires + '.' + payload;
   const actual = Buffer.from(signature);
-  const expected = Buffer.from(sign(expires));
-  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+  const expected = Buffer.from(sign(value));
+  if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
+
+  try {
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (session.admin === true && session.qualification === null) return session;
+    if (/^[1-6]$/.test(session.qualification)) return { qualification: session.qualification, admin: false };
+  } catch (_) {
+    return null;
+  }
+  return null;
 }
 
 function isAuthenticated(req) {
-  const cookie = req.headers.cookie || '';
-  const match = cookie.match(/(?:^|;\s*)auth_token=([^;]+)/);
-  return isValidToken(match ? match[1] : null);
+  return getSession(req) !== null;
 }
 
 function authCookie(token) {
@@ -57,4 +77,4 @@ function parseJsonBody(req) {
   return JSON.parse(body);
 }
 
-module.exports = { json, createToken, isAuthenticated, authCookie, clearedCookie, parseJsonBody };
+module.exports = { json, createToken, getSession, isAuthenticated, authCookie, clearedCookie, parseJsonBody };

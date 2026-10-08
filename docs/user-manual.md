@@ -23,19 +23,26 @@ The **JDVP Attendance Monitoring System** is a web-based QR scanning and automat
 ## 2. Operator Login & Access Control
 The system is protected by 7 authorized operator accounts:
 
-| Operator Account | Username | Password |
-| :---: | :---: | :---: |
-| Account 1 | `1trainee2026` | `2026` |
-| Account 2 | `2trainee2026` | `2026` |
-| Account 3 | `3trainee2026` | `2026` |
-| Account 4 | `4trainee2026` | `2026` |
-| Account 5 | `5trainee2026` | `2026` |
-| Account 6 | `6trainee2026` | `2026` |
-| Account 7 | `7trainee2026` | `2026` |
+| Operator Account | Username | Password | Access |
+| :---: | :---: | :---: | :--- |
+| Account 1 | `1trainee2026` | `2026` | Cookery only |
+| Account 2 | `2trainee2026` | `2026` | House Keeping only |
+| Account 3 | `3trainee2026` | `2026` | CSS only |
+| Account 4 | `4trainee2026` | `2026` | EIM only |
+| Account 5 | `5trainee2026` | `2026` | SMAW NC I only |
+| Account 6 | `6trainee2026` | `2026` | SMAW NC II only |
+| Account 7 | `7trainee2026` | `2026` | Administrator: all qualifications |
+
+Configure the Vercel `ACCOUNTS` environment variable with each account's
+qualification number, for example `1trainee2026:your-password:1`. Use `:all`
+for Account 7. Existing two-part `username:password` entries continue to use
+their order in the list (Accounts 1–6 map to qualifications 1–6, and Account
+7 is the administrator). Keep account passwords secret and redeploy after
+changing the environment variable.
 
 1. Open the website homepage (`/index.html`).
 2. Enter your assigned username and password.
-3. Click **Enter**. Successful authentication grants access to the dashboard.
+3. Click **Enter**. Accounts 1–6 can view records and register trainees only for their numbered qualification. Account 7 can access all qualifications.
 4. Click **Log Out** in the main menu to end your session.
 
 ---

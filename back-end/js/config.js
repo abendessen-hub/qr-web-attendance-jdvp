@@ -12,7 +12,16 @@ const QUALIFICATIONS = {
   '6': 'SMAW NC II'
 };
 
-const configReady = Promise.resolve();
+const configReady = fetch('/api/check-auth')
+  .then(function (response) {
+    if (!response.ok) throw new Error('Authentication required.');
+    return response.json();
+  })
+  .then(function (session) {
+    CONFIG.QUALIFICATION = session.qualification;
+    CONFIG.IS_ADMIN = session.admin === true;
+    return session;
+  });
 
 // Validates and sanitizes 4-digit badge IDs (e.g. "0001") or 5-digit Trainee IDs (e.g. "60001")
 function normalizeId(value) {
