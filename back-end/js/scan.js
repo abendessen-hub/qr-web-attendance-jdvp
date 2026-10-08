@@ -82,8 +82,18 @@ async function postAction(payload) {
         signal: ctrl.signal
       });
 
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.toLowerCase().includes('application/json')) {
+        throw new Error('The attendance API returned a non-JSON response. Check the Apps Script deployment and API_URL.');
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (_) {
+        throw new Error('The attendance API returned invalid JSON.');
+      }
+      if (!res.ok) throw new Error(data.message || 'HTTP ' + res.status);
       return data;
     } catch (err) {
       lastError = err;

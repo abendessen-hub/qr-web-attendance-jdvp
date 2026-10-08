@@ -1,10 +1,12 @@
 const assert = require('node:assert/strict');
+const http = require('node:http');
 const test = require('node:test');
 
 const login = require('../api/login');
 const checkAuth = require('../api/check-auth');
 const getConfig = require('../api/get-config');
 const proxy = require('../api/api');
+const { createToken, authCookie } = require('../api-lib/auth');
 
 async function invoke(handler, request) {
   const response = {
@@ -50,6 +52,37 @@ test('login cookie authenticates protected Vercel endpoints', async () => {
     const deniedResponse = await invoke(proxy, { method: 'GET', url: '/api/api?action=registry', headers: {} });
     assert.equal(deniedResponse.statusCode, 401);
   } finally {
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
+
+test('proxy reports an HTML upstream response as a configuration error', async () => {
+  const previous = {
+    AUTH_SECRET: process.env.AUTH_SECRET,
+    API_URL: process.env.API_URL
+  };
+  process.env.AUTH_SECRET = 'test-secret-for-html-upstream';
+
+  const upstream = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<!DOCTYPE html>');
+  });
+  await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+  process.env.API_URL = `http://127.0.0.1:${upstream.address().port}/exec`;
+
+  try {
+    const response = await invoke(proxy, {
+      method: 'POST',
+      headers: { cookie: authCookie(createToken()) },
+      body: { action: 'getNextId', qualification: '1' }
+    });
+    assert.equal(response.statusCode, 502);
+    assert.match(JSON.parse(response.body).message, /returned HTML instead of JSON/);
+  } finally {
+    await new Promise((resolve, reject) => upstream.close((error) => error ? reject(error) : resolve()));
     for (const [name, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[name];
       else process.env[name] = value;

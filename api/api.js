@@ -72,10 +72,20 @@ module.exports = async function proxy(req, res) {
     }
 
     const response = await requestWithRedirects(target, req.method, body);
+    let responseBody;
+    try {
+      responseBody = JSON.parse(response.body);
+    } catch (_) {
+      return json(res, 502, {
+        status: 'error',
+        message: 'Google Apps Script returned HTML instead of JSON. Redeploy it as a Web app with access set to Anyone, then verify API_URL uses the current /exec URL.'
+      });
+    }
+
     res.statusCode = response.statusCode || 200;
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
-    return res.end(response.body);
+    return res.end(JSON.stringify(responseBody));
   } catch (_) {
     return json(res, 500, { status: 'error', message: 'Internal server proxy error.' });
   }
