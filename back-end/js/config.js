@@ -1,5 +1,5 @@
 const CONFIG = {
-  API_URL: '/.netlify/functions/api',
+  API_URL: '/api/api',
   MAX_ID: 400
 };
 

@@ -118,4 +118,4 @@ Inside your Google Sheet:
    - Select type: **Web app**
    - Execute as: **Me**
    - Who has access: **Anyone**
-5. Copy the deployed Web App URL (`.../exec`) and set it as `API_URL` in your Netlify environment settings.
+5. Copy the deployed Web App URL (`.../exec`) and set it as `API_URL` in your Vercel project environment variables.

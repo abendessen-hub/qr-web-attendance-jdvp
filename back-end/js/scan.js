@@ -65,7 +65,7 @@ window.addEventListener('pointerdown', function () {
 // ---------- network communication with fallback ----------
 async function postAction(payload) {
   const urlsToTry = [
-    CONFIG.API_URL,     // 1. Netlify proxy (bypasses browser CORS & redirects)
+    CONFIG.API_URL,     // Vercel proxy (bypasses browser CORS & redirects)
     CONFIG.FALLBACK_URL // 2. Direct Apps Script URL
   ].filter(Boolean);
 
