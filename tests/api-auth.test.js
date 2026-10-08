@@ -1,12 +1,22 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const http = require('node:http');
+const path = require('node:path');
 const test = require('node:test');
+const vm = require('node:vm');
 
 const login = require('../api/login');
 const checkAuth = require('../api/check-auth');
 const getConfig = require('../api/get-config');
 const proxy = require('../api/api');
 const { createToken, authCookie } = require('../api-lib/auth');
+const scriptModule = { exports: {} };
+vm.runInNewContext(
+  fs.readFileSync(path.join(__dirname, '..', 'backend', 'Code.gs'), 'utf8') +
+    '\nmodule.exports = { isWithinTimeInWindow, isTimeOutAllowed };',
+  { module: scriptModule }
+);
+const { isWithinTimeInWindow, isTimeOutAllowed } = scriptModule.exports;
 
 async function invoke(handler, request) {
   const response = {
@@ -75,8 +85,10 @@ test('qualification accounts cannot read or register for another qualification',
 
   let upstreamUrl = '';
   let upstreamBody = '';
+  let upstreamMethod = '';
   const upstream = http.createServer((req, res) => {
     upstreamUrl = req.url;
+    upstreamMethod = req.method;
     upstreamBody = '';
     req.on('data', (chunk) => { upstreamBody += chunk; });
     req.on('end', () => {
@@ -85,7 +97,13 @@ test('qualification accounts cannot read or register for another qualification',
         status: 'ok',
         records: [
           { qualification: 'Cookery', id: '10001' },
-          { qualification: 'House Keeping', id: '20001' }
+          {
+            qualification: 'House Keeping',
+            id: '20001',
+            date: new Date().toISOString().slice(0, 10),
+            timeIn: '07:00 AM',
+            timeOut: ''
+          }
         ],
         trainees: [
           { qualification: 'Cookery', id: '10001' },
@@ -123,13 +141,14 @@ test('qualification accounts cannot read or register for another qualification',
     const mappedScan = await invoke(proxy, {
       method: 'POST',
       headers: { cookie },
-      body: { action: 'scan', id: '0001' }
+      body: { action: 'scan', id: '0001', allowAnyTime: true }
     });
     assert.equal(mappedScan.statusCode, 200);
     assert.deepEqual(JSON.parse(upstreamBody), {
       action: 'scan',
       id: '20001',
-      qualification: '2'
+      qualification: '2',
+      restrictedTimeWindow: true
     });
 
     const allowedRegistration = await invoke(proxy, {
@@ -167,6 +186,18 @@ test('qualification accounts cannot read or register for another qualification',
       qualification: null,
       admin: true
     });
+    const adminScan = await invoke(proxy, {
+      method: 'POST',
+      headers: { cookie: adminCookie },
+      body: { action: 'scan', id: '10001' }
+    });
+    assert.equal(adminScan.statusCode, 200);
+    assert.equal(upstreamMethod, 'POST');
+    assert.deepEqual(JSON.parse(upstreamBody), {
+      action: 'scan',
+      id: '10001',
+      allowAnyTime: true
+    });
 
     const getResponse = await invoke(proxy, {
       method: 'GET',
@@ -176,7 +207,13 @@ test('qualification accounts cannot read or register for another qualification',
     assert.equal(getResponse.statusCode, 200);
     assert.match(upstreamUrl, /qualification=2/);
     assert.deepEqual(JSON.parse(getResponse.body).records, [
-      { qualification: 'House Keeping', id: '20001' }
+      {
+        qualification: 'House Keeping',
+        id: '20001',
+        date: new Date().toISOString().slice(0, 10),
+        timeIn: '07:00 AM',
+        timeOut: ''
+      }
     ]);
     assert.deepEqual(JSON.parse(getResponse.body).trainees, [
       { qualification: 'House Keeping', id: '20001' }
@@ -188,6 +225,21 @@ test('qualification accounts cannot read or register for another qualification',
       else process.env[name] = value;
     }
   }
+});
+
+test('Apps Script enforces limited time windows and allows admin time-outs', () => {
+  assert.equal(isWithinTimeInWindow(6), false);
+  assert.equal(isWithinTimeInWindow(7), true);
+  assert.equal(isWithinTimeInWindow(14), true);
+  assert.equal(isWithinTimeInWindow(15), false);
+
+  assert.equal(isTimeOutAllowed(14, false), false);
+  assert.equal(isTimeOutAllowed(15, false), true);
+  assert.equal(isTimeOutAllowed(21, false), true);
+  assert.equal(isTimeOutAllowed(22, false), false);
+  assert.equal(isTimeOutAllowed(23, false), false);
+  assert.equal(isTimeOutAllowed(22, true), true);
+  assert.equal(isTimeOutAllowed(0, true), true);
 });
 
 test('proxy reports an HTML upstream response as a configuration error', async () => {

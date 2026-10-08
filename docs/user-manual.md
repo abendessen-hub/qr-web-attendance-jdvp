@@ -45,6 +45,8 @@ changing the environment variable.
 3. Click **Enter**. Accounts 1–6 can view records and register trainees only for their numbered qualification. Account 7 can access all qualifications.
 4. Click **Log Out** in the main menu to end your session.
 
+Accounts 1–6 may record Time In from **7:00 AM up to (but not including) 3:00 PM**, and Time Out from **3:00 PM up to (but not including) 10:00 PM**. Account 7 has no time-window restrictions. These windows use the Google spreadsheet's configured time zone. The app's API sets the account scope; because the Apps Script Web App is deployed with access set to **Anyone**, direct callers of its URL can bypass those account limits.
+
 ---
 
 ## 3. Registering Trainees & Generating QR Badges
@@ -78,16 +80,17 @@ Navigate to **Scan QR** from the main dashboard:
 ### Scanning Status Indicators:
 - **First Scan of the Day (Time In):**
   - **Green Alert:** `[Student Name] ([ID]) — Time In: [HH:MM AM/PM]`
-  - Logged into the student's qualification sheet with `Time In` recorded and `Time Out` left blank.
+  - Logged as a new dated attendance entry with `Time In` recorded and `Time Out` left blank. On a later date, the next scan starts a new entry automatically; previous dates remain in the sheet as attendance history.
 - **Scan Before 3:00 PM:**
   - **Yellow Alert:** `Not Time out yet`
   - Existing Time In remains intact; Time Out is not recorded.
-- **Valid Time Out (3:00 PM – 5:00 PM):**
+- **Valid Time Out (3:00 PM – 10:00 PM):**
   - **Green Alert:** `[Student Name] ([ID]) — Time Out: [HH:MM AM/PM]`
   - Updates the student's row for today with their `Time Out` timestamp.
 - **Already Completed for Today:**
   - **Yellow Alert:** `Attendance already completed for today.`
   - Prevents accidental repeated scans from creating duplicates.
+  - Completion is checked against the current date in the spreadsheet's time zone, so yesterday's Time In/Time Out does not prevent a new day's scan.
 - **Unregistered Trainee Scan:**
   - **Red Alert:** `Trainee is not registered yet.`
   - A quick-registration popup opens automatically. Select the qualification, input the student's full name, and click **Register & Record Attendance**. The system registers the student and immediately records their Time In.
@@ -129,3 +132,5 @@ Inside your Google Sheet:
    - Execute as: **Me**
    - Who has access: **Anyone**
 5. Copy the deployed Web App URL (`.../exec`) and set it as `API_URL` in your Vercel project environment variables.
+6. After changing `Code.gs`, deploy a new Web App version and make sure `API_URL` still points to that deployment.
+6. After changing `Code.gs`, update the deployed Web App to a new version so the time-window rules take effect.

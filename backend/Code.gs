@@ -32,7 +32,7 @@ const QUALIFICATIONS = {
 };
 
 const TIME_OUT_START = 15; // 3:00 PM (24-hour format)
-const TIME_OUT_END = 17;   // 5:00 PM (24-hour format)
+const TIME_OUT_END = 22;   // 10:00 PM (24-hour format)
 
 function setup() {
   const ss = SpreadsheetApp.getActive();
@@ -58,6 +58,14 @@ function setup() {
 function qualFromId(id) {
   const prefix = String(id).charAt(0);
   return QUALIFICATIONS[prefix] || null;
+}
+
+function isWithinTimeInWindow(hour) {
+  return hour >= 7 && hour < TIME_OUT_START;
+}
+
+function isTimeOutAllowed(hour, allowAnyTime) {
+  return allowAnyTime || (hour >= TIME_OUT_START && hour < TIME_OUT_END);
 }
 
 // Scans ONLY that qualification's sheet to find the next sequential ID
@@ -187,6 +195,9 @@ function registerTrainee(body) {
   if (!id || id.length !== 5) {
     id = getNextId(qp);
   }
+  if (qualFromId(id) !== qualName) {
+    return reply({ status: 'error', message: 'Trainee ID does not match the selected qualification.' });
+  }
 
   const row = sh.getLastRow() + 1;
   sh.getRange(row, 1).setNumberFormat('@').setValue(id);
@@ -208,6 +219,15 @@ function recordScan(body) {
       status: 'not_registered',
       id: code,
       badge: badge4
+    });
+  }
+
+  const requestedQualification = String(body.qualification || '').trim();
+  if (requestedQualification && (!QUALIFICATIONS[requestedQualification] ||
+      QUALIFICATIONS[requestedQualification] !== t.qualification)) {
+    return reply({
+      status: 'wrong_qualification',
+      message: 'This trainee belongs to a different qualification.'
     });
   }
 
@@ -254,12 +274,15 @@ function recordScan(body) {
           });
         }
 
-        if (hour < TIME_OUT_START) {
+        if (!isTimeOutAllowed(hour, body.allowAnyTime === true)) {
+          const message = hour < TIME_OUT_START
+            ? 'Not Time out yet'
+            : 'The Time Out window has ended. Time Out is available until 10:00 PM.';
           return reply({
-            status: 'not_time_out',
+            status: hour < TIME_OUT_START ? 'not_time_out' : 'time_window',
             id: id,
             name: t.name,
-            message: 'Not Time out yet'
+            message: message
           });
         }
 
@@ -272,6 +295,13 @@ function recordScan(body) {
         });
       }
     }
+  }
+
+  if (body.restrictedTimeWindow === true && !isWithinTimeInWindow(hour)) {
+    return reply({
+      status: 'time_window',
+      message: 'Time In can only be recorded from 7:00 AM to 3:00 PM.'
+    });
   }
 
   if (placeholderRowIndex > 0) {
@@ -318,8 +348,13 @@ function doGet(e) {
     const tz = ss.getSpreadsheetTimeZone();
     const records = [];
     const traineesMap = {};
+    const requestedQualification = String((e && e.parameter && e.parameter.qualification) || '').trim();
+    if (requestedQualification && !QUALIFICATIONS[requestedQualification]) {
+      return reply({ status: 'error', message: 'Invalid qualification.', records: [], trainees: [] });
+    }
 
-    for (const qualName of Object.values(QUALIFICATIONS)) {
+    for (const [prefix, qualName] of Object.entries(QUALIFICATIONS)) {
+      if (requestedQualification && prefix !== requestedQualification) continue;
       const sh = ss.getSheetByName(qualName);
       if (!sh) continue;
 

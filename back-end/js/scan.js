@@ -106,29 +106,17 @@ async function postAction(payload) {
   throw lastError || new Error('All connection attempts failed.');
 }
 
-// Local cache for instant recognition and zero duplicate latency
-const todayAttendanceCache = new Map();
-
 async function record(id) {
   if (busy) return;
 
-  const now = new Date();
-  const currentHour = now.getHours();
-
-  // Instant check from cache: eliminates delay when badge was already processed
-  if (todayAttendanceCache.has(id)) {
-    const cached = todayAttendanceCache.get(id);
-    if (cached.status === 'already_completed' || cached.status === 'time_out') {
-      show('dup', (cached.name || 'Trainee') + ' (' + id + ')\nAttendance already completed for today.');
-      lastId = id; lastAt = Date.now();
-      return;
-    }
-    if (cached.status === 'time_in' && currentHour < 15) {
-      show('dup', (cached.name || 'Trainee') + ' (' + id + ')\nTime In: ' + (cached.timeIn || 'Recorded') + '\nNot Time out yet (Window: 3:00 PM - 5:00 PM)');
-      lastId = id; lastAt = Date.now();
-      return;
-    }
+  try {
+    await configReady;
+  } catch (err) {
+    show('bad', err.message || 'Could not verify account access.');
+    return;
   }
+
+  const now = new Date();
 
   busy = true; lastId = id; lastAt = Date.now();
   resultEl.className = 'processing';
@@ -138,24 +126,32 @@ async function record(id) {
     const data = await postAction({ action: 'scan', id: id });
     
     if (data.status === 'time_in') {
-      todayAttendanceCache.set(id, { name: data.name, status: 'time_in', timeIn: data.time });
       show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime In: ' + data.time);
     } else if (data.status === 'time_out') {
-      todayAttendanceCache.set(id, { name: data.name, status: 'time_out', timeOut: data.time });
       show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime Out: ' + data.time);
     } else if (data.status === 'not_time_out') {
-      todayAttendanceCache.set(id, { name: data.name, status: 'not_time_out', timeIn: data.timeIn || '' });
-      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Not Time out yet (Window: 3:00 PM - 5:00 PM)');
+      if (CONFIG.IS_ADMIN) {
+        show('bad', 'The Apps Script backend allows Time Out only from 3:00 PM. This cannot be overridden from the app.');
+      } else {
+        show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Not Time out yet (Window: 3:00 PM - 10:00 PM)');
+      }
     } else if (data.status === 'already_completed') {
-      todayAttendanceCache.set(id, { name: data.name, status: 'already_completed' });
       show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Attendance already completed for today.');
+    } else if (data.status === 'time_window') {
+      show('bad', data.message || 'Time In can only be recorded from 7:00 AM to 3:00 PM.');
+    } else if (data.status === 'wrong_qualification') {
+      show('bad', data.message || 'This trainee belongs to another qualification.');
     } else if (data.status === 'not_registered') {
       show('bad', 'Badge ' + id + ' is not registered yet.');
       openQuickRegistration(id);
     } else if (data.status === 'invalid') {
       show('bad', 'Invalid QR code.');
     } else {
-      show('bad', data.message || 'Could not record. Try again.');
+      if (CONFIG.IS_ADMIN && data.status === 'not_time_out') {
+        show('bad', 'The deployed Apps Script is outdated. Deploy the updated Code.gs to allow unrestricted admin scans.');
+      } else {
+        show('bad', data.message || 'Could not record. Try again.');
+      }
     }
   } catch (err) {
     lastId = '';

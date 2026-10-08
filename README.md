@@ -26,8 +26,12 @@ The local `.env` file is ignored by Git. Replace the example account values with
 strong credentials before deployment.
 
 Each account's qualification is enforced by the authenticated API, including
-attendance and trainee registration. Put the qualification number in each
-account entry explicitly to avoid relying on list order.
+attendance and trainee registration. Accounts 1–6 have Time In and Time Out
+windows enforced in Apps Script (Time In 7:00 AM–3:00 PM; Time Out 3:00 PM–10:00 PM);
+Account 7 can scan at any time. Put the
+qualification number in each account entry explicitly to avoid relying on list
+order. The Apps Script Web App is public to support the proxy, so direct calls
+to its URL can bypass account restrictions.
 
 The scan page uses the `qr-scanner` browser module. Keep its worker file beside
 the module under `back-end/lib` when updating the dependency.

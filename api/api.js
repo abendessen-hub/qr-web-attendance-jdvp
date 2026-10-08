@@ -2,6 +2,15 @@ const https = require('node:https');
 const http = require('node:http');
 const { json, getSession, parseJsonBody } = require('../api-lib/auth');
 
+const QUALIFICATION_NAMES = {
+  '1': 'Cookery',
+  '2': 'House Keeping',
+  '3': 'CSS',
+  '4': 'EIM',
+  '5': 'SMAW NC I',
+  '6': 'SMAW NC II'
+};
+
 function requestWithRedirects(targetUrl, method, postBody, redirectCount = 0) {
   if (redirectCount > 5) return Promise.reject(new Error('Too many redirects'));
 
@@ -64,6 +73,8 @@ module.exports = async function proxy(req, res) {
         return json(res, 400, { status: 'error', message: 'Invalid action.' });
       }
       if (!session.admin) {
+        delete parsed.allowAnyTime;
+        delete parsed.restrictedTimeWindow;
         const qualification = session.qualification;
         const suppliedQualification = parsed.qualification;
         if (suppliedQualification !== undefined && String(suppliedQualification) !== qualification) {
@@ -89,9 +100,12 @@ module.exports = async function proxy(req, res) {
           parsed.id = id.length === 5 ? id : qualification + id.padStart(4, '0');
           parsed.qualification = qualification;
         }
+        if (parsed.action === 'scan') parsed.restrictedTimeWindow = true;
       }
       if (parsed.name) parsed.name = sanitizeString(parsed.name, 70);
       if (parsed.id) parsed.id = sanitizeString(parsed.id, 10);
+      if (parsed.action === 'scan' && session.admin) parsed.allowAnyTime = true;
+
       body = JSON.stringify(parsed);
     }
 
@@ -100,6 +114,9 @@ module.exports = async function proxy(req, res) {
       const requestedQualification = requestUrl.searchParams.get('qualification');
       if (!session.admin && requestedQualification && requestedQualification !== session.qualification) {
         return json(res, 403, { status: 'error', message: 'This account can only access its assigned qualification.' });
+      }
+      if (session.admin && requestedQualification && !/^[1-6]$/.test(requestedQualification)) {
+        return json(res, 400, { status: 'error', message: 'Invalid qualification.' });
       }
       if (!session.admin) requestUrl.searchParams.set('qualification', session.qualification);
       const query = requestUrl.search;
@@ -118,15 +135,7 @@ module.exports = async function proxy(req, res) {
     }
 
     if (!session.admin && responseBody && typeof responseBody === 'object') {
-      const qualificationNames = {
-        '1': 'Cookery',
-        '2': 'House Keeping',
-        '3': 'CSS',
-        '4': 'EIM',
-        '5': 'SMAW NC I',
-        '6': 'SMAW NC II'
-      };
-      const qualificationName = qualificationNames[session.qualification];
+      const qualificationName = QUALIFICATION_NAMES[session.qualification];
       for (const key of ['records', 'trainees']) {
         if (Array.isArray(responseBody[key])) {
           responseBody[key] = responseBody[key].filter((record) =>
