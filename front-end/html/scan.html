@@ -13,6 +13,23 @@
     <h1>JDVP Monitoring Track</h1>
   </header>
 
+  <!-- Qualification Selector -->
+  <section class="panel qual-select-panel">
+    <label for="scan-qual"><strong>1. Select Qualification:</strong></label>
+    <div class="row" style="margin: 6px 0 0;">
+      <select id="scan-qual" required>
+        <option value="" disabled selected>-- Select Qualification (Required) --</option>
+        <option value="1">1 - Cookery</option>
+        <option value="2">2 - House Keeping</option>
+        <option value="3">3 - Computer System Servicing (CSS)</option>
+        <option value="4">4 - Electrical Installation and Maintenance (EIM)</option>
+        <option value="5">5 - Shielded Metal Arc Welding (SMAW) NC I</option>
+        <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC II</option>
+      </select>
+    </div>
+    <p class="hint" id="qual-hint">Select a qualification first. Scanned 4-digit badges will be recorded for that qualification.</p>
+  </section>
+
   <!-- Live camera viewfinder -->
   <div class="scanner-container">
     <div id="reader" aria-label="Camera view"></div>

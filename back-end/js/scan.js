@@ -6,6 +6,8 @@ const manualForm = document.getElementById('manual-form');
 const manualInput = document.getElementById('manual-id');
 const torchBtn = document.getElementById('torch');
 const cameraStatus = document.getElementById('camera-status');
+const scanQualSelect = document.getElementById('scan-qual');
+const qualHint = document.getElementById('qual-hint');
 
 // Quick registration modal elements
 const regModal = document.getElementById('reg-modal');
@@ -132,6 +134,79 @@ async function record(id) {
   }
 }
 
+// ---------- Qualification Selection & Persistence ----------
+function getSelectedQualification() {
+  return scanQualSelect ? scanQualSelect.value : '';
+}
+
+function updateQualHint() {
+  const qp = getSelectedQualification();
+  if (!qp || !QUALIFICATIONS[qp]) {
+    if (qualHint) {
+      qualHint.innerHTML = '⚠️ <strong>Please select a qualification first</strong> before scanning or manual entry.';
+    }
+    if (!busy) {
+      resultEl.textContent = 'Please select a qualification above to begin.';
+    }
+  } else {
+    const qualName = QUALIFICATIONS[qp];
+    if (qualHint) {
+      qualHint.innerHTML = 'Active: <strong>' + qualName + '</strong> (4-digit badge 0001 &rarr; Trainee ID <strong>' + qp + '0001</strong>)';
+    }
+    if (!busy) {
+      resultEl.textContent = 'Ready for ' + qualName + '. Hold QR code steady within the camera frame.';
+    }
+  }
+}
+
+// Restore saved qualification if available
+const savedQual = localStorage.getItem('jdvp_selected_qual');
+if (savedQual && QUALIFICATIONS[savedQual] && scanQualSelect) {
+  scanQualSelect.value = savedQual;
+}
+updateQualHint();
+
+if (scanQualSelect) {
+  scanQualSelect.addEventListener('change', function () {
+    const val = scanQualSelect.value;
+    localStorage.setItem('jdvp_selected_qual', val);
+    updateQualHint();
+    if (regQualSelect) {
+      regQualSelect.value = val;
+      updateGeneratedIdPreview();
+    }
+  });
+}
+
+function resolveTraineeId(rawText) {
+  const selectedQual = getSelectedQualification();
+  if (!selectedQual || !QUALIFICATIONS[selectedQual]) {
+    show('bad', 'Please select a qualification first.');
+    if (scanQualSelect) scanQualSelect.focus();
+    return null;
+  }
+
+  const norm = normalizeId(rawText);
+  if (!norm) return null;
+
+  // 4-digit badge (e.g. "0001") -> convert to 5-digit Trainee ID (e.g. "10001" or "20002")
+  if (norm.length === 4) {
+    return selectedQual + norm;
+  }
+
+  // 5-digit Trainee ID (e.g. "10001") -> verify qualification prefix matches
+  if (norm.length === 5) {
+    const prefix = norm.charAt(0);
+    if (prefix !== selectedQual) {
+      show('bad', 'ID ' + norm + ' belongs to ' + (QUALIFICATIONS[prefix] || 'another qualification') + ', not ' + QUALIFICATIONS[selectedQual] + '.');
+      return null;
+    }
+    return norm;
+  }
+
+  return null;
+}
+
 // ---------- On-the-fly Trainee Registration Modal ----------
 function updateGeneratedIdPreview() {
   const qp = regQualSelect.value;
@@ -141,8 +216,10 @@ function updateGeneratedIdPreview() {
 }
 
 function openQuickRegistration(scannedCode) {
+  const selectedQual = getSelectedQualification() || '1';
   currentScannedBadge = scannedCode.slice(-4);
   regBadgePreview.value = currentScannedBadge;
+  regQualSelect.value = selectedQual;
   regNameInput.value = '';
   updateGeneratedIdPreview();
   regModal.hidden = false;
@@ -192,8 +269,18 @@ quickRegForm.addEventListener('submit', async function (e) {
 function onScan(text) {
   if (busy || !regModal.hidden) return;
   const now = Date.now();
-  const id = normalizeId(text);
 
+  const selectedQual = getSelectedQualification();
+  if (!selectedQual) {
+    if (now - lastBadAt > 2000) {
+      lastBadAt = now;
+      show('bad', 'Please select a qualification first.');
+      if (scanQualSelect) scanQualSelect.focus();
+    }
+    return;
+  }
+
+  const id = resolveTraineeId(text);
   if (!id) {
     if (now - lastBadAt > 2500) { lastBadAt = now; show('bad', 'Invalid QR code'); }
     return;
@@ -210,11 +297,18 @@ function onScan(text) {
 // ---------- Manual Form Entry ----------
 manualForm.addEventListener('submit', function (e) {
   e.preventDefault();
+  const selectedQual = getSelectedQualification();
+  if (!selectedQual) {
+    show('bad', 'Please select a qualification first.');
+    if (scanQualSelect) scanQualSelect.focus();
+    return;
+  }
+
   const raw = manualInput.value.trim();
-  const id = normalizeId(raw);
+  const id = resolveTraineeId(raw);
   manualInput.value = '';
   if (!id) {
-    show('bad', 'Please enter a 4-digit badge (e.g. 0001) or 5-digit ID (e.g. 60001)');
+    show('bad', 'Please enter a 4-digit badge (e.g. 0001) or 5-digit ID for ' + QUALIFICATIONS[selectedQual]);
     return;
   }
   record(id);
@@ -284,7 +378,7 @@ async function startScanner() {
     } catch (_) {}
 
     setupTorch();
-    resultEl.textContent = 'Hold QR code steady within the camera frame.';
+    updateQualHint();
   } catch (err) {
     const denied = err && (err.name === 'NotAllowedError' || /permission/i.test(String(err)));
     cameraStatus.hidden = false;

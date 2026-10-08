@@ -65,6 +65,8 @@ input::placeholder{color:#7d8998}
   padding:16px;margin-bottom:16px}
 .panel h2{font-size:1.1rem;margin:0 0 8px}
 .hint{color:var(--muted);font-size:.9rem;margin:6px 0 0;max-width:65ch}
+.qual-select-panel{border:2px solid var(--brand);background:#fff;max-width:28rem;margin:0 auto 14px}
+.qual-select-panel select{font-size:1.05rem;font-weight:600;border:2px solid var(--brand);background:#fff}
 
 /* Live camera viewfinder */
 .scanner-container{position:relative;width:100%;max-width:28rem;aspect-ratio:4/3;min-height:280px;margin:0 auto;overflow:hidden;border-radius:var(--radius);background:#111}

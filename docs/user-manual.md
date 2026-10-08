@@ -62,8 +62,11 @@ Navigate to **Generate QR** from the main dashboard:
 ## 4. Attendance Scanning Workflow
 Navigate to **Scan QR** from the main dashboard:
 
-1. Allow camera permissions when prompted by your browser (requires an HTTPS or localhost connection).
-2. Point the device camera at the trainee's QR code.
+1. Select the technical **Qualification** from the dropdown menu (e.g., `1 - Cookery`, `2 - House Keeping`, `6 - SMAW NC II`).
+   - A qualification must be selected before scanning or manual entry.
+   - When a 4-digit badge (e.g., `0001`) is scanned, it is automatically mapped to the appropriate 5-digit Trainee ID for that qualification (e.g., `10001` for Cookery, `20001` for House Keeping).
+2. Allow camera permissions when prompted by your browser (requires an HTTPS or localhost connection).
+3. Point the device camera at the trainee's QR code.
 
 ### Scanning Status Indicators:
 - **First Scan of the Day (Time In):**
