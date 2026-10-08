@@ -251,7 +251,7 @@ async function startScanner() {
     fps: 24,
     disableFlip: true,
     qrbox: function (w, h) {
-      const edge = Math.floor(Math.min(w, h) * 0.8);
+      const edge = Math.floor(Math.min(w, h) * 0.75);
       return { width: edge, height: edge };
     }
   };
@@ -259,8 +259,8 @@ async function startScanner() {
   const hiRes = Object.assign({}, baseConfig, {
     videoConstraints: {
       facingMode: { ideal: 'environment' },
-      width: { ideal: 1280, min: 640 },
-      height: { ideal: 720, min: 480 }
+      width: { ideal: 1920, min: 640 },
+      height: { ideal: 1080, min: 480 }
     }
   });
 
@@ -275,12 +275,16 @@ async function startScanner() {
 
     try {
       await scanner.applyVideoConstraints({
-        advanced: [{ focusMode: 'continuous' }, { exposureMode: 'continuous' }]
+        advanced: [
+          { focusMode: 'continuous' },
+          { exposureMode: 'continuous' },
+          { whiteBalanceMode: 'continuous' }
+        ]
       });
     } catch (_) {}
 
     setupTorch();
-    resultEl.textContent = 'Hold QR code steady or tap "Snap Photo of QR".';
+    resultEl.textContent = 'Hold QR code steady within the camera frame.';
   } catch (err) {
     const denied = err && (err.name === 'NotAllowedError' || /permission/i.test(String(err)));
     cameraStatus.hidden = false;
