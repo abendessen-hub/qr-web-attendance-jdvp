@@ -372,19 +372,22 @@ manualForm.addEventListener('submit', function (e) {
 });
 
 // ---------- Camera Initialization ----------
-function setupTorch() {
-  if (!torchBtn) return;
+async function setupTorch() {
+  if (!torchBtn || !scanner) return;
   try {
-    const torch = scanner.getRunningTrackCameraCapabilities().torchFeature();
-    if (!torch.isSupported()) return;
+    if (!await scanner.hasFlash()) return;
     torchBtn.hidden = false;
     torchBtn.onclick = async function () {
       try {
-        await torch.apply(!torch.value());
-        torchBtn.setAttribute('aria-pressed', String(torch.value()));
-      } catch (_) {}
+        await scanner.toggleFlash();
+        torchBtn.setAttribute('aria-pressed', String(scanner.isFlashOn()));
+      } catch (err) {
+        show('bad', 'Could not toggle the flashlight: ' + (err.message || 'Camera error.'));
+      }
     };
-  } catch (_) {}
+  } catch (err) {
+    console.warn('Flashlight detection failed:', err);
+  }
 }
 
 async function startScanner() {
@@ -392,45 +395,29 @@ async function startScanner() {
   cameraStatus.hidden = false;
   cameraStatus.textContent = 'Starting camera…';
 
-  scanner = scanner || new Html5Qrcode('reader', {
-    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-    verbose: false
-  });
-
-  const fastConfig = {
-    fps: 20,
-    disableFlip: true,
-    qrbox: function (w, h) {
-      const edge = Math.floor(Math.min(w, h) * 0.72);
-      return { width: edge, height: edge };
-    },
-    videoConstraints: {
-      facingMode: { ideal: 'environment' },
-      width: { ideal: 1280, min: 640 },
-      height: { ideal: 720, min: 480 }
-    }
-  };
-
   try {
-    await scanner.start({ facingMode: 'environment' }, fastConfig, onScan, function () {});
+    if (!scanner) {
+      const module = await import('/back-end/lib/qr-scanner.min.js');
+      const QrScanner = module.default;
+      scanner = new QrScanner(
+        document.getElementById('reader'),
+        function (result) { onScan(result.data); },
+        {
+          preferredCamera: 'environment',
+          maxScansPerSecond: 20,
+          returnDetailedScanResult: true
+        }
+      );
+    }
+    await scanner.start();
     running = true;
     cameraStatus.hidden = true;
 
-    try {
-      await scanner.applyVideoConstraints({
-        advanced: [
-          { focusMode: 'continuous' },
-          { exposureMode: 'continuous' },
-          { whiteBalanceMode: 'continuous' }
-        ]
-      });
-    } catch (_) {}
-
-    setupTorch();
+    await setupTorch();
     updateQualHint();
   } catch (err) {
     const denied = err && (err.name === 'NotAllowedError' || /permission/i.test(String(err)));
+    console.error('Could not start QR scanner:', err);
     cameraStatus.hidden = false;
     cameraStatus.textContent = denied
       ? 'Camera access is blocked. Allow camera permission in your browser settings, then reload.'
@@ -444,7 +431,9 @@ async function startScanner() {
 async function stopScanner() {
   if (!running) return;
   running = false;
-  try { await scanner.stop(); } catch (_) {}
+  scanner.stop();
+  torchBtn.hidden = true;
+  torchBtn.removeAttribute('aria-pressed');
 }
 
 document.addEventListener('visibilitychange', function () {

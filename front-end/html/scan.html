@@ -32,7 +32,7 @@
 
   <!-- Live camera viewfinder -->
   <div class="scanner-container">
-    <div id="reader" aria-label="Camera view"></div>
+    <video id="reader" aria-label="Camera view" muted playsinline></video>
     <div id="camera-status" class="camera-status" role="status">Starting camera…</div>
     <div class="scanner-overlay" id="scanner-overlay">
       <div class="scanner-target"></div>
@@ -105,7 +105,6 @@
 </main>
 
 <script src="/back-end/js/authenticate.js"></script>
-<script src="/back-end/lib/html5-qrcode.min.js"></script>
 <script src="/back-end/js/config.js"></script>
 <script src="/back-end/js/scan.js"></script>
 </body>

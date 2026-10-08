@@ -29,6 +29,9 @@ Each account's qualification is enforced by the authenticated API, including
 attendance and trainee registration. Put the qualification number in each
 account entry explicitly to avoid relying on list order.
 
+The scan page uses the `qr-scanner` browser module. Keep its worker file beside
+the module under `back-end/lib` when updating the dependency.
+
 ## Deploy to Vercel
 
 Import this repository in Vercel with the **Other** framework preset. Keep the
