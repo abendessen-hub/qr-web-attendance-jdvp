@@ -19,7 +19,7 @@ const regIdPreview = document.getElementById('reg-id-preview');
 const regCancelBtn = document.getElementById('reg-cancel');
 
 const SAME_CODE_COOLDOWN_MS = 3000;
-const REQUEST_TIMEOUT_MS = 12000;
+const REQUEST_TIMEOUT_MS = 30000;
 
 let busy = false;
 let lastId = '';
@@ -91,6 +91,11 @@ async function postAction(payload) {
       if (!res.ok) throw new Error(data.message || 'HTTP ' + res.status);
       return data;
     } catch (err) {
+      if (ctrl.signal.aborted) {
+        const timeoutError = new Error('No response within 30 seconds. Attendance may already have been recorded. Check today\'s attendance before scanning again.');
+        timeoutError.name = 'TimeoutError';
+        throw timeoutError;
+      }
       lastError = err;
       console.warn('Request failed on ' + url + ':', err);
     } finally {
@@ -128,7 +133,11 @@ async function record(id) {
     }
   } catch (err) {
     lastId = '';
-    show('bad', 'Connection error: ' + (err.message || 'Please check network and try again.'));
+    if (err.name === 'TimeoutError') {
+      show('dup', err.message);
+    } else {
+      show('bad', 'Connection error: ' + (err.message || 'Please check network and try again.'));
+    }
   } finally {
     setTimeout(function () { busy = false; }, 1200);
   }
