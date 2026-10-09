@@ -36,6 +36,12 @@ function getTodayIso() {
   return y + '-' + m + '-' + d;
 }
 
+function displayQualificationName(name) {
+  if (name === 'SMAW NC I') return 'SMAW NC II';
+  if (name === 'SMAW NC II') return 'SMAW NC III';
+  return name;
+}
+
 // ─── Fetch All Data from Backend ───
 async function loadAllData() {
   await configReady;
@@ -223,7 +229,7 @@ function renderQualificationProgress() {
 
     const label = document.createElement('div');
     label.className = 'chart-label';
-    label.textContent = q;
+    label.textContent = displayQualificationName(q);
 
     const barWrap = document.createElement('div');
     barWrap.className = 'chart-bar-wrap';
@@ -279,7 +285,10 @@ function renderFilteredTable() {
     tdName.textContent = r.name || '—';
 
     const tdQual = document.createElement('td');
-    tdQual.innerHTML = '<span class="badge-qual">' + (r.qualification || '—') + '</span>';
+    const qualBadge = document.createElement('span');
+    qualBadge.className = 'badge-qual';
+    qualBadge.textContent = displayQualificationName(r.qualification || '—');
+    tdQual.appendChild(qualBadge);
 
     const tdDate = document.createElement('td');
     tdDate.textContent = r.date || '—';
