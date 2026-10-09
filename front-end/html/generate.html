@@ -13,6 +13,19 @@
     <h1>Generate QR codes</h1>
   </header>
 
+  <section class="panel">
+    <label for="qualification-select">Qualification</label>
+    <select id="qualification-select" disabled>
+      <option value="">Select a qualification</option>
+      <option value="1">Cookery</option>
+      <option value="2">House Keeping</option>
+      <option value="3">CSS</option>
+      <option value="4">EIM</option>
+      <option value="5">SMAW NC II</option>
+      <option value="6">SMAW NC III</option>
+    </select>
+  </section>
+
   <!-- Option 1: One student -->
   <section class="panel">
     <h2>One student</h2>
@@ -46,7 +59,7 @@
       <button class="btn ghost" id="range-print" type="button" disabled>Print sheet (A4)</button>
     </div>
     <div id="progress" aria-hidden="true"><div></div></div>
-    <p class="hint" id="range-status">Each ZIP file holds one PNG per badge (e.g. 0001.png). The print sheet fits 9 codes per standard A4 page (3x3 grid). Qualification will be assigned upon first scan.</p>
+    <p class="hint" id="range-status">Each ZIP file holds one labeled PNG per badge (e.g. 0001.png). The print sheet fits 9 badges per standard A4 page (3x3 grid).</p>
   </section>
 
   <!-- Grid of generated QR cards for screen preview and A4 printing -->

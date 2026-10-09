@@ -155,7 +155,7 @@ input::placeholder{color:#94a3b8}
   text-align:center;display:flex;flex-direction:column;align-items:center;break-inside:avoid;page-break-inside:avoid;
   box-shadow:0 1px 3px rgba(0,0,0,0.03);transition:transform .15s ease,box-shadow .15s ease}
 .qr-card:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(28,63,148,0.08)}
-.qr-card img{width:160px;height:160px;display:block;margin:0 auto}
+.qr-card img{width:160px;height:auto;display:block;margin:0 auto}
 .qr-card span{display:block;margin-top:8px;font-weight:700;font-size:1.18rem;letter-spacing:.05em;color:var(--ink)}
 .qr-card small{display:block;font-size:.85rem;color:var(--muted);line-height:1.2;margin-top:2px}
 
@@ -247,7 +247,7 @@ tbody tr:last-child td{border-bottom:0}
   }
   .qr-card img{
     width:54mm!important;
-    height:54mm!important;
+    height:auto!important;
     display:block!important;
     margin:0 auto!important;
   }

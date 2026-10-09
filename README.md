@@ -16,7 +16,7 @@
 4. Start the site and its Vercel Functions:
 
    ```sh
-   npm run serve
+   npm run server
    ```
 
    Open `http://localhost:3000`. The functions require Vercel Dev; opening

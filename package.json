@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "JDVP Monitoring Track - Luis Y. Ferrer Jr. Senior High School",
   "scripts": {
-    "serve": "vercel dev --local",
+    "server": "vercel dev --local",
     "test": "node --test"
   },
   "devDependencies": {
