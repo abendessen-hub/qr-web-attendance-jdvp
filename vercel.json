@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/scan", "destination": "/front-end/html/scan.html" },
+    { "source": "/generate", "destination": "/front-end/html/generate.html" },
+    { "source": "/progress", "destination": "/front-end/html/progress.html" },
+    { "source": "/home", "destination": "/front-end/html/home.html" }
+  ],
+  "redirects": [
+    { "source": "/records", "destination": "/progress", "permanent": true }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains; preload" }
+      ]
+    }
+  ]
+}

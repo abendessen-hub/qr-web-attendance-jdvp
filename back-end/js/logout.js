@@ -1,4 +1,4 @@
 document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await fetch('/.netlify/functions/logout', { method: 'POST' });
+    await fetch('/api/logout', { method: 'POST' });
     window.location.href = '/index.html';
 });

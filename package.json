@@ -3,9 +3,13 @@
   "version": "2.0.0",
   "description": "JDVP Monitoring Track - Luis Y. Ferrer Jr. Senior High School",
   "scripts": {
-    "dev": "netlify dev"
+    "serve": "vercel dev --local",
+    "test": "node --test"
   },
   "devDependencies": {
-    "netlify-cli": "^27.10.2"
+    "vercel": "^63.0.2"
+  },
+  "dependencies": {
+    "qr-scanner": "^1.4.2"
   }
 }

@@ -15,28 +15,37 @@ The **JDVP Attendance Monitoring System** is a web-based QR scanning and automat
 | **2** | House Keeping | `2` | `House Keeping` |
 | **3** | Computer System Servicing (CSS) | `3` | `CSS` |
 | **4** | Electrical Installation and Maintenance (EIM) | `4` | `EIM` |
-| **5** | Shielded Metal Arc Welding (SMAW) NC I | `5` | `SMAW NC I` |
-| **6** | Shielded Metal Arc Welding (SMAW) NC II | `6` | `SMAW NC II` |
+| **5** | Shielded Metal Arc Welding (SMAW) NC II | `5` | `SMAW NC II` |
+| **6** | Shielded Metal Arc Welding (SMAW) NC III | `6` | `SMAW NC III` |
 
 ---
 
 ## 2. Operator Login & Access Control
 The system is protected by 7 authorized operator accounts:
 
-| Operator Account | Username | Password |
-| :---: | :---: | :---: |
-| Account 1 | `1trainee2026` | `2026` |
-| Account 2 | `2trainee2026` | `2026` |
-| Account 3 | `3trainee2026` | `2026` |
-| Account 4 | `4trainee2026` | `2026` |
-| Account 5 | `5trainee2026` | `2026` |
-| Account 6 | `6trainee2026` | `2026` |
-| Account 7 | `7trainee2026` | `2026` |
+| Operator Account | Username | Password | Access |
+| :---: | :---: | :---: | :--- |
+| Account 1 | `1trainee2026` | `2026` | Cookery only |
+| Account 2 | `2trainee2026` | `2026` | House Keeping only |
+| Account 3 | `3trainee2026` | `2026` | CSS only |
+| Account 4 | `4trainee2026` | `2026` | EIM only |
+| Account 5 | `5trainee2026` | `2026` | SMAW NC II only |
+| Account 6 | `6trainee2026` | `2026` | SMAW NC III only |
+| Account 7 | `7trainee2026` | `2026` | Administrator: all qualifications |
+
+Configure the Vercel `ACCOUNTS` environment variable with each account's
+qualification number, for example `1trainee2026:your-password:1`. Use `:all`
+for Account 7. Existing two-part `username:password` entries continue to use
+their order in the list (Accounts 1–6 map to qualifications 1–6, and Account
+7 is the administrator). Keep account passwords secret and redeploy after
+changing the environment variable.
 
 1. Open the website homepage (`/index.html`).
 2. Enter your assigned username and password.
-3. Click **Enter**. Successful authentication grants access to the dashboard.
+3. Click **Enter**. Accounts 1–6 can view records and register trainees only for their numbered qualification. Account 7 can access all qualifications.
 4. Click **Log Out** in the main menu to end your session.
+
+Accounts 1–6 may record Time In from **7:00 AM up to (but not including) 3:00 PM**, and Time Out from **3:00 PM up to (but not including) 10:00 PM**. Account 7 has no time-window restrictions. These windows use the Google spreadsheet's configured time zone. The app's API sets the account scope; because the Apps Script Web App is deployed with access set to **Anyone**, direct callers of its URL can bypass those account limits.
 
 ---
 
@@ -44,7 +53,7 @@ The system is protected by 7 authorized operator accounts:
 Navigate to **Generate QR** from the main dashboard:
 
 ### Registering a New Trainee:
-1. Select the student's **Qualification** from the dropdown menu (e.g. `6 - SMAW NC II`).
+1. Select the student's **Qualification** from the dropdown menu (e.g. `6 - SMAW NC III`).
 2. Type the trainee's **Full Name** (e.g., `Juan Dela Cruz`).
 3. The system automatically fetches and displays the **Next Available ID** (e.g., `60001`).
 4. Click **Register & Generate**.
@@ -62,22 +71,26 @@ Navigate to **Generate QR** from the main dashboard:
 ## 4. Attendance Scanning Workflow
 Navigate to **Scan QR** from the main dashboard:
 
-1. Allow camera permissions when prompted by your browser (requires an HTTPS or localhost connection).
-2. Point the device camera at the trainee's QR code.
+1. Select the technical **Qualification** from the dropdown menu (e.g., `1 - Cookery`, `2 - House Keeping`, `6 - SMAW NC III`).
+   - A qualification must be selected before scanning or manual entry.
+   - When a 4-digit badge (e.g., `0001`) is scanned, it is automatically mapped to the appropriate 5-digit Trainee ID for that qualification (e.g., `10001` for Cookery, `20001` for House Keeping).
+2. Allow camera permissions when prompted by your browser (requires an HTTPS or localhost connection).
+3. Point the device camera at the trainee's QR code.
 
 ### Scanning Status Indicators:
 - **First Scan of the Day (Time In):**
   - **Green Alert:** `[Student Name] ([ID]) — Time In: [HH:MM AM/PM]`
-  - Logged into the student's qualification sheet with `Time In` recorded and `Time Out` left blank.
+  - Logged as a new dated attendance entry with `Time In` recorded and `Time Out` left blank. On a later date, the next scan starts a new entry automatically; previous dates remain in the sheet as attendance history.
 - **Scan Before 3:00 PM:**
   - **Yellow Alert:** `Not Time out yet`
   - Existing Time In remains intact; Time Out is not recorded.
-- **Valid Time Out (3:00 PM – 5:00 PM):**
+- **Valid Time Out (3:00 PM – 10:00 PM):**
   - **Green Alert:** `[Student Name] ([ID]) — Time Out: [HH:MM AM/PM]`
   - Updates the student's row for today with their `Time Out` timestamp.
 - **Already Completed for Today:**
   - **Yellow Alert:** `Attendance already completed for today.`
   - Prevents accidental repeated scans from creating duplicates.
+  - Completion is checked against the current date in the spreadsheet's time zone, so yesterday's Time In/Time Out does not prevent a new day's scan.
 - **Unregistered Trainee Scan:**
   - **Red Alert:** `Trainee is not registered yet.`
   - A quick-registration popup opens automatically. Select the qualification, input the student's full name, and click **Register & Record Attendance**. The system registers the student and immediately records their Time In.
@@ -100,7 +113,7 @@ Navigate to **Progress** from the main dashboard:
    - Visual progress bars comparing attendance numbers across all 6 JDVP specializations.
 4. **Daily Student Attendance Table:**
    - Filter records by **Date** (defaults to all/selectable dates).
-   - Filter records by **Qualification** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC I`, `SMAW NC II`).
+   - Filter records by **Qualification** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC II`, `SMAW NC III`).
    - Search records in real-time by **Trainee ID** or **Student Name**.
    - View exact `Time In` and `Time Out` timestamps for each student.
    - Click **Refresh** to sync with Google Sheets.
@@ -112,10 +125,12 @@ Inside your Google Sheet:
 1. Open **Extensions** → **Apps Script**.
 2. Replace all script contents with the provided `backend/Code.gs`.
 3. Select the `setup` function from the dropdown toolbar and click **Run**.
-   - This creates **EXACTLY the 6 qualification tabs** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC I`, `SMAW NC II`).
+   - This creates **EXACTLY the 6 qualification tabs** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC II`, `SMAW NC III`).
    - Each sheet is initialized with the exact 5 columns: `Trainee ID | Name | Date | Time In | Time Out`.
 4. Click **Deploy** → **New deployment**:
    - Select type: **Web app**
    - Execute as: **Me**
    - Who has access: **Anyone**
-5. Copy the deployed Web App URL (`.../exec`) and set it as `API_URL` in your Netlify environment settings.
+5. Copy the deployed Web App URL (`.../exec`) and set it as `API_URL` in your Vercel project environment variables.
+6. After changing `Code.gs`, deploy a new Web App version and make sure `API_URL` still points to that deployment.
+6. After changing `Code.gs`, update the deployed Web App to a new version so the time-window rules take effect.
