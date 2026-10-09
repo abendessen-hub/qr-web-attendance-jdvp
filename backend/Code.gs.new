@@ -7,8 +7,8 @@
  * 2. House Keeping
  * 3. CSS
  * 4. EIM
- * 5. SMAW NC I
- * 6. SMAW NC II
+ * 5. SMAW NC II
+ * 6. SMAW NC III
  *
  * Columns: Trainee ID | Name | Date | Time In | Time Out
  *
@@ -27,8 +27,8 @@ const QUALIFICATIONS = {
   '2': 'House Keeping',
   '3': 'CSS',
   '4': 'EIM',
-  '5': 'SMAW NC I',
-  '6': 'SMAW NC II'
+  '5': 'SMAW NC II',
+  '6': 'SMAW NC III'
 };
 
 const TIME_OUT_START = 15; // 3:00 PM (24-hour format)

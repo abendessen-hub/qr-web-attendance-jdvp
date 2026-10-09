@@ -11,8 +11,8 @@ const ALL_QUAL_LIST = [
   'House Keeping',
   'CSS',
   'EIM',
-  'SMAW NC I',
-  'SMAW NC II'
+  'SMAW NC II',
+  'SMAW NC III'
 ];
 
 function formatDateDisplay(isoDateStr) {
@@ -34,12 +34,6 @@ function getTodayIso() {
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return y + '-' + m + '-' + d;
-}
-
-function displayQualificationName(name) {
-  if (name === 'SMAW NC I') return 'SMAW NC II';
-  if (name === 'SMAW NC II') return 'SMAW NC III';
-  return name;
 }
 
 // ─── Fetch All Data from Backend ───
@@ -229,7 +223,7 @@ function renderQualificationProgress() {
 
     const label = document.createElement('div');
     label.className = 'chart-label';
-    label.textContent = displayQualificationName(q);
+    label.textContent = q;
 
     const barWrap = document.createElement('div');
     barWrap.className = 'chart-bar-wrap';
@@ -287,7 +281,7 @@ function renderFilteredTable() {
     const tdQual = document.createElement('td');
     const qualBadge = document.createElement('span');
     qualBadge.className = 'badge-qual';
-    qualBadge.textContent = displayQualificationName(r.qualification || '—');
+    qualBadge.textContent = r.qualification || '—';
     tdQual.appendChild(qualBadge);
 
     const tdDate = document.createElement('td');

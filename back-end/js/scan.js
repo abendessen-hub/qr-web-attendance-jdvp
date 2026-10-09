@@ -109,16 +109,19 @@ async function postAction(payload) {
 async function record(id) {
   if (busy) return;
 
+  busy = true;
+  lastId = id;
+  lastAt = Date.now();
+
   try {
     await configReady;
   } catch (err) {
     show('bad', err.message || 'Could not verify account access.');
+    lastAt = Date.now();
+    busy = false;
     return;
   }
 
-  const now = new Date();
-
-  busy = true; lastId = id; lastAt = Date.now();
   resultEl.className = 'processing';
   resultEl.textContent = 'Verifying ID ' + id + '…';
 
@@ -130,11 +133,7 @@ async function record(id) {
     } else if (data.status === 'time_out') {
       show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime Out: ' + data.time);
     } else if (data.status === 'not_time_out') {
-      if (CONFIG.IS_ADMIN) {
-        show('bad', 'The Apps Script backend allows Time Out only from 3:00 PM. This cannot be overridden from the app.');
-      } else {
-        show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Not Time out yet (Window: 3:00 PM - 10:00 PM)');
-      }
+      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Not Time out yet (Window: 3:00 PM - 10:00 PM)');
     } else if (data.status === 'already_completed') {
       show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Attendance already completed for today.');
     } else if (data.status === 'time_window') {
@@ -147,20 +146,16 @@ async function record(id) {
     } else if (data.status === 'invalid') {
       show('bad', 'Invalid QR code.');
     } else {
-      if (CONFIG.IS_ADMIN && data.status === 'not_time_out') {
-        show('bad', 'The deployed Apps Script is outdated. Deploy the updated Code.gs to allow unrestricted admin scans.');
-      } else {
-        show('bad', data.message || 'Could not record. Try again.');
-      }
+      show('bad', data.message || 'Could not record. Try again.');
     }
   } catch (err) {
-    lastId = '';
     if (err.name === 'TimeoutError') {
       show('dup', err.message);
     } else {
       show('bad', 'Connection error: ' + (err.message || 'Please check network and try again.'));
     }
   } finally {
+    lastAt = Date.now();
     setTimeout(function () { busy = false; }, 350);
   }
 }
@@ -340,7 +335,7 @@ function onScan(text) {
     return;
   }
 
-  if (id === lastId && now - lastAt < 2000) {
+  if (id === lastId && now - lastAt < SAME_CODE_COOLDOWN_MS) {
     return;
   }
 

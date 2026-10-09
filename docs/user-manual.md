@@ -15,8 +15,8 @@ The **JDVP Attendance Monitoring System** is a web-based QR scanning and automat
 | **2** | House Keeping | `2` | `House Keeping` |
 | **3** | Computer System Servicing (CSS) | `3` | `CSS` |
 | **4** | Electrical Installation and Maintenance (EIM) | `4` | `EIM` |
-| **5** | Shielded Metal Arc Welding (SMAW) NC I | `5` | `SMAW NC I` |
-| **6** | Shielded Metal Arc Welding (SMAW) NC II | `6` | `SMAW NC II` |
+| **5** | Shielded Metal Arc Welding (SMAW) NC II | `5` | `SMAW NC II` |
+| **6** | Shielded Metal Arc Welding (SMAW) NC III | `6` | `SMAW NC III` |
 
 ---
 
@@ -29,8 +29,8 @@ The system is protected by 7 authorized operator accounts:
 | Account 2 | `2trainee2026` | `2026` | House Keeping only |
 | Account 3 | `3trainee2026` | `2026` | CSS only |
 | Account 4 | `4trainee2026` | `2026` | EIM only |
-| Account 5 | `5trainee2026` | `2026` | SMAW NC I only |
-| Account 6 | `6trainee2026` | `2026` | SMAW NC II only |
+| Account 5 | `5trainee2026` | `2026` | SMAW NC II only |
+| Account 6 | `6trainee2026` | `2026` | SMAW NC III only |
 | Account 7 | `7trainee2026` | `2026` | Administrator: all qualifications |
 
 Configure the Vercel `ACCOUNTS` environment variable with each account's
@@ -53,7 +53,7 @@ Accounts 1–6 may record Time In from **7:00 AM up to (but not including) 3:00 
 Navigate to **Generate QR** from the main dashboard:
 
 ### Registering a New Trainee:
-1. Select the student's **Qualification** from the dropdown menu (e.g. `6 - SMAW NC II`).
+1. Select the student's **Qualification** from the dropdown menu (e.g. `6 - SMAW NC III`).
 2. Type the trainee's **Full Name** (e.g., `Juan Dela Cruz`).
 3. The system automatically fetches and displays the **Next Available ID** (e.g., `60001`).
 4. Click **Register & Generate**.
@@ -71,7 +71,7 @@ Navigate to **Generate QR** from the main dashboard:
 ## 4. Attendance Scanning Workflow
 Navigate to **Scan QR** from the main dashboard:
 
-1. Select the technical **Qualification** from the dropdown menu (e.g., `1 - Cookery`, `2 - House Keeping`, `6 - SMAW NC II`).
+1. Select the technical **Qualification** from the dropdown menu (e.g., `1 - Cookery`, `2 - House Keeping`, `6 - SMAW NC III`).
    - A qualification must be selected before scanning or manual entry.
    - When a 4-digit badge (e.g., `0001`) is scanned, it is automatically mapped to the appropriate 5-digit Trainee ID for that qualification (e.g., `10001` for Cookery, `20001` for House Keeping).
 2. Allow camera permissions when prompted by your browser (requires an HTTPS or localhost connection).
@@ -113,7 +113,7 @@ Navigate to **Progress** from the main dashboard:
    - Visual progress bars comparing attendance numbers across all 6 JDVP specializations.
 4. **Daily Student Attendance Table:**
    - Filter records by **Date** (defaults to all/selectable dates).
-   - Filter records by **Qualification** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC I`, `SMAW NC II`).
+   - Filter records by **Qualification** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC II`, `SMAW NC III`).
    - Search records in real-time by **Trainee ID** or **Student Name**.
    - View exact `Time In` and `Time Out` timestamps for each student.
    - Click **Refresh** to sync with Google Sheets.
@@ -125,7 +125,7 @@ Inside your Google Sheet:
 1. Open **Extensions** → **Apps Script**.
 2. Replace all script contents with the provided `backend/Code.gs`.
 3. Select the `setup` function from the dropdown toolbar and click **Run**.
-   - This creates **EXACTLY the 6 qualification tabs** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC I`, `SMAW NC II`).
+   - This creates **EXACTLY the 6 qualification tabs** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC II`, `SMAW NC III`).
    - Each sheet is initialized with the exact 5 columns: `Trainee ID | Name | Date | Time In | Time Out`.
 4. Click **Deploy** → **New deployment**:
    - Select type: **Web app**
