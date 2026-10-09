@@ -17,6 +17,7 @@ const regQualSelect = document.getElementById('reg-qual');
 const regNameInput = document.getElementById('reg-name');
 const regIdPreview = document.getElementById('reg-id-preview');
 const regCancelBtn = document.getElementById('reg-cancel');
+const regSubmitBtn = quickRegForm.querySelector('button[type="submit"]');
 
 const SAME_CODE_COOLDOWN_MS = 3000;
 const REQUEST_TIMEOUT_MS = 30000;
@@ -25,6 +26,7 @@ let busy = false;
 let lastId = '';
 let lastAt = 0;
 let lastBadAt = 0;
+let registeringTrainee = false;
 let scanner = null;
 let running = false;
 let audioCtx = null;
@@ -107,7 +109,7 @@ async function postAction(payload) {
 }
 
 async function record(id) {
-  if (busy) return;
+  if (busy || registeringTrainee) return;
 
   busy = true;
   lastId = id;
@@ -156,7 +158,7 @@ async function record(id) {
     }
   } finally {
     lastAt = Date.now();
-    setTimeout(function () { busy = false; }, 350);
+    busy = false;
   }
 }
 
@@ -285,11 +287,23 @@ regCancelBtn.addEventListener('click', closeQuickRegistration);
 
 quickRegForm.addEventListener('submit', async function (e) {
   e.preventDefault();
+  if (registeringTrainee) return;
+
   const assignedId = normalizeId(regIdPreview.value);
   const name = sanitizeText(regNameInput.value);
   const qp = sanitizeText(regQualSelect.value);
   if (!name || !assignedId) return;
 
+  const registration = {
+    badge: currentScannedBadge,
+    name: name,
+    qualification: qp
+  };
+
+  registeringTrainee = true;
+  busy = true;
+  regSubmitBtn.disabled = true;
+  closeQuickRegistration();
   show('', 'Registering ' + name + ' (' + assignedId + ')…');
   try {
     const regRes = await postAction({
@@ -300,17 +314,24 @@ quickRegForm.addEventListener('submit', async function (e) {
     });
 
     if (regRes.status !== 'ok') {
-      alert(regRes.message || 'Registration failed.');
-      return;
+      throw new Error(regRes.message || 'Registration failed.');
     }
 
-    closeQuickRegistration();
     show('ok', 'Registered: ' + regRes.name + ' (' + assignedId + '). Recording Time In…');
 
+    registeringTrainee = false;
+    regSubmitBtn.disabled = false;
     busy = false;
     record(assignedId);
   } catch (err) {
-    alert('Failed to register trainee: ' + err.message);
+    registeringTrainee = false;
+    regSubmitBtn.disabled = false;
+    busy = false;
+    openQuickRegistration(registration.badge);
+    regQualSelect.value = registration.qualification;
+    regNameInput.value = registration.name;
+    updateGeneratedIdPreview();
+    show('bad', 'Registration failed: ' + (err.message || 'Please try again.'));
   }
 });
 

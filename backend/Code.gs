@@ -199,6 +199,16 @@ function registerTrainee(body) {
     return reply({ status: 'error', message: 'Trainee ID does not match the selected qualification.' });
   }
 
+  const existing = findTrainee(id);
+  if (existing) {
+    return reply({
+      status: 'ok',
+      id: existing.id,
+      name: existing.name || name,
+      qualification: existing.qualification
+    });
+  }
+
   const row = sh.getLastRow() + 1;
   sh.getRange(row, 1).setNumberFormat('@').setValue(id);
   sh.getRange(row, 2).setValue(name);
