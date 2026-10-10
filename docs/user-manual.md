@@ -61,17 +61,18 @@ Navigate to **Generate QR** from the main menu:
 
 ### Generating a Single Badge:
 1. Enter a 4-digit Student Badge ID (e.g. `0001` to `0400`).
-2. Click **Generate**. The QR code preview card appears below.
-3. Click **Download PNG** to save the QR badge image (`0001.png`).
+2. Select the student's **Qualification**.
+3. Click **Generate**. The QR code contains the full 5-digit Trainee ID (qualification prefix + badge ID), and the preview shows the qualification.
+4. Click **Download PNG** to save the QR badge image (e.g. `60001.png`).
 
 ### Generating a Batch Range & Printing Badges:
-1. Under **A range of students**, enter the starting ID in **From** (e.g. `0001`) and the ending ID in **To** (e.g. `0400`).
+1. Under **A range of students**, enter the starting ID in **From** (e.g. `0001`) and the ending ID in **To** (e.g. `0400`), then select the qualification.
 2. Click **Generate range**. A live progress bar displays generation status across the screen grid.
 3. Once generated:
-   - Click **Download ZIP** to export a compressed `.zip` file containing individual PNG badge files (e.g., `jdvp-qr-codes-0001-to-0400.zip`).
+   - Click **Download ZIP** to export a compressed `.zip` file containing individual PNG badge files named with their full Trainee IDs (e.g., `jdvp-qr-codes-60001-to-60400.zip`).
    - Click **Print sheet (A4)** to open the browser print window. The layout is optimized for standard **A4 paper** fitting 12 QR badges per page (3 columns x 4 rows) with centered alignment and cutting guides.
 
-*Note: Qualification and trainee identity are bound automatically when the 4-digit badge is scanned for the first time on the Scan QR page.*
+*Note: Each generated QR code is qualification-specific and encodes the full 5-digit Trainee ID. Older 4-digit-only QR codes do not identify a qualification; regenerate them for each qualification.*
 
 ---
 
@@ -86,11 +87,11 @@ Navigate to **Scan QR** from the main menu:
    - **Flashlight:** Tap **Flashlight** on supported mobile devices to toggle the camera flash in low-light environments.
 
 ### On-the-Fly Trainee Quick Registration:
-When an unregistered 4-digit badge (e.g. `0001`) is scanned for the first time:
+When an unregistered QR code is scanned for the first time:
 1. A **Register Trainee** modal pops up automatically.
-2. The scanned 4-digit badge is displayed in **Scanned 4-Digit Badge** (e.g. `0001`).
-3. Select the student's **Qualification** from the dropdown menu (e.g. `6 - Shielded Metal Arc Welding (SMAW) NC II`).
-4. The system automatically calculates and previews the assigned **5-Digit Trainee ID** (e.g. `60001`, combining the qualification prefix `6` + `0001`).
+2. The scanned 4-digit badge portion is displayed in **Scanned 4-Digit Badge** (e.g. `0001`).
+3. For a qualification-specific 5-digit QR, the qualification is selected automatically and cannot be changed. For an older 4-digit-only QR, select the student's **Qualification** manually.
+4. The system previews the assigned **5-Digit Trainee ID** (e.g. `60001`, combining qualification prefix `6` + badge `0001`).
 5. Enter the student's **Full Name** (e.g., `Juan Dela Cruz`).
 6. Click **Register & Record Attendance**. The student is registered into their qualification's Google Sheet tab, and their **Time In** is logged immediately.
 

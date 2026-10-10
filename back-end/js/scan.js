@@ -214,12 +214,15 @@ fileInput.addEventListener('change', async function () {
 function updateGeneratedIdPreview() {
   const qp = regQualSelect.value;
   const fourDigits = currentScannedBadge.slice(-4);
-  const assignedId = qp + fourDigits;
+  const assignedId = QUALIFICATIONS[qp] ? qp + fourDigits : '';
   regIdPreview.value = assignedId;
 }
 
 function openQuickRegistration(scannedCode) {
   currentScannedBadge = scannedCode.slice(-4);
+  const qualificationPrefix = scannedCode.length === 5 ? scannedCode.charAt(0) : '';
+  regQualSelect.disabled = Boolean(qualificationPrefix);
+  regQualSelect.value = qualificationPrefix;
   regBadgePreview.value = currentScannedBadge;
   regNameInput.value = '';
   updateGeneratedIdPreview();
@@ -230,6 +233,9 @@ function openQuickRegistration(scannedCode) {
 function closeQuickRegistration() {
   regModal.hidden = true;
   regNameInput.value = '';
+  regQualSelect.disabled = false;
+  regQualSelect.value = '';
+  updateGeneratedIdPreview();
 }
 
 regQualSelect.addEventListener('change', updateGeneratedIdPreview);
@@ -240,7 +246,10 @@ quickRegForm.addEventListener('submit', async function (e) {
   const assignedId = normalizeId(regIdPreview.value);
   const name = sanitizeText(regNameInput.value);
   const qp = sanitizeText(regQualSelect.value);
-  if (!name || !assignedId) return;
+  if (!name || !assignedId || !QUALIFICATIONS[qp] || assignedId.charAt(0) !== qp) {
+    show('bad', 'Enter a name and select the matching qualification.');
+    return;
+  }
 
   show('', 'Registering ' + name + ' (' + assignedId + ')…');
   try {

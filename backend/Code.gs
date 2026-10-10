@@ -184,7 +184,10 @@ function registerTrainee(body) {
   }
 
   let id = body.id ? String(body.id).trim() : null;
-  if (!id || id.length !== 5) {
+  if (id && (!/^[1-6]\d{4}$/.test(id) || id.charAt(0) !== qp)) {
+    return reply({ status: 'error', message: 'Trainee ID does not match the selected qualification.' });
+  }
+  if (!id) {
     id = getNextId(qp);
   }
 

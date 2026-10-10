@@ -21,6 +21,18 @@
         <label for="single-id">Student ID (4 digits)</label>
         <input id="single-id" type="text" inputmode="numeric" maxlength="4" placeholder="0001">
       </div>
+      <div>
+        <label for="single-qualification">Qualification</label>
+        <select id="single-qualification">
+          <option value="">Select a qualification</option>
+          <option value="1">1 - Cookery</option>
+          <option value="2">2 - House Keeping</option>
+          <option value="3">3 - Computer System Servicing (CSS)</option>
+          <option value="4">4 - Electrical Installation and Maintenance (EIM)</option>
+          <option value="5">5 - Shielded Metal Arc Welding (SMAW) NC I</option>
+          <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC II</option>
+        </select>
+      </div>
       <button class="btn" id="single-make" type="button">Generate</button>
     </div>
     <div class="preview" id="single-preview"></div>
@@ -39,6 +51,18 @@
         <label for="range-to">To</label>
         <input id="range-to" type="text" inputmode="numeric" maxlength="4" value="0400">
       </div>
+      <div>
+        <label for="range-qualification">Qualification</label>
+        <select id="range-qualification">
+          <option value="">Select a qualification</option>
+          <option value="1">1 - Cookery</option>
+          <option value="2">2 - House Keeping</option>
+          <option value="3">3 - Computer System Servicing (CSS)</option>
+          <option value="4">4 - Electrical Installation and Maintenance (EIM)</option>
+          <option value="5">5 - Shielded Metal Arc Welding (SMAW) NC I</option>
+          <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC II</option>
+        </select>
+      </div>
     </div>
     <div class="row">
       <button class="btn" id="range-make" type="button">Generate range</button>
@@ -46,7 +70,7 @@
       <button class="btn ghost" id="range-print" type="button" disabled>Print sheet (A4)</button>
     </div>
     <div id="progress" aria-hidden="true"><div></div></div>
-    <p class="hint" id="range-status">Each ZIP file holds one PNG per badge (e.g. 0001.png). The print sheet fits 12 codes per standard A4 page. Qualification will be assigned upon first scan.</p>
+    <p class="hint" id="range-status">Select a qualification before generating. Each QR code contains its full qualification-prefixed trainee ID and the print sheet fits 12 codes per standard A4 page.</p>
   </section>
 
   <!-- Grid of generated QR cards for screen preview and A4 printing -->

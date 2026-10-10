@@ -1,4 +1,4 @@
-// QR Generator: 4-digit badge generator with batch ZIP export and A4 printing
+// QR Generator: qualification-bound trainee IDs with batch ZIP export and A4 printing
 // Uses qrcodejs and JSZip
 
 const SIZE = 300, MARGIN = 30;
@@ -8,6 +8,10 @@ const qr = new QRCode(holder, { width: SIZE, height: SIZE, correctLevel: QRCode.
 const $ = function (id) { return document.getElementById(id); };
 let singleUrl = '';
 let batch = []; // [{ id, url }]
+
+function buildTraineeId(qualification, badgeId) {
+  return qualification + badgeId;
+}
 
 // Returns a PNG data URL: high-contrast QR code on white canvas with quiet zone
 function makePng(id) {
@@ -30,11 +34,15 @@ function save(href, name) {
 
 // ─── One student (4 digits) ───
 $('single-make').addEventListener('click', function () {
-  const id = normalizeId($('single-id').value);
-  if (!id) {
-    $('single-preview').textContent = 'Enter an ID from 0001 to 0400.';
+  const badgeId = normalizeId($('single-id').value);
+  const qualification = $('single-qualification').value;
+  if (!badgeId || !QUALIFICATIONS[qualification]) {
+    $('single-preview').textContent = 'Enter a valid badge ID and select a qualification.';
+    $('single-download').disabled = true;
+    singleUrl = '';
     return;
   }
+  const id = buildTraineeId(qualification, badgeId);
   singleUrl = makePng(id);
   const img = new Image();
   img.src = singleUrl; img.alt = 'QR code for ' + id; img.width = 240;
@@ -42,7 +50,7 @@ $('single-make').addEventListener('click', function () {
   const card = document.createElement('div');
   card.className = 'qr-card';
   const label = document.createElement('span'); label.textContent = id;
-  const note = document.createElement('small'); note.textContent = 'JDVP Trainee';
+  const note = document.createElement('small'); note.textContent = QUALIFICATIONS[qualification];
   card.append(img, label, note);
 
   $('single-preview').replaceChildren(card);
@@ -58,15 +66,16 @@ $('single-download').addEventListener('click', function () {
 $('range-make').addEventListener('click', function () {
   const from = normalizeId($('range-from').value);
   const to = normalizeId($('range-to').value);
-
-  if (!from || !to || +from > +to) {
-    $('range-status').textContent = 'Enter a valid range, for example 0001 to 0400.';
-    return;
-  }
+  const qualification = $('range-qualification').value;
 
   batch = [];
   $('grid').replaceChildren();
   $('range-zip').disabled = $('range-print').disabled = true;
+  if (!from || !to || +from > +to || !QUALIFICATIONS[qualification]) {
+    $('range-status').textContent = 'Select a qualification and enter a valid range, for example 0001 to 0400.';
+    return;
+  }
+
   $('range-make').disabled = true;
   $('progress').style.display = 'block';
 
@@ -76,7 +85,8 @@ $('range-make').addEventListener('click', function () {
   (function step() {
     const stop = Math.min(n + 20, +to + 1); // 20 codes per slice keeps browser smooth
     for (; n < stop; n++) {
-      const id = String(n).padStart(4, '0');
+      const badgeId = String(n).padStart(4, '0');
+      const id = buildTraineeId(qualification, badgeId);
       const url = makePng(id);
       batch.push({ id: id, url: url });
 
@@ -84,7 +94,7 @@ $('range-make').addEventListener('click', function () {
       card.className = 'qr-card';
       const img = new Image(); img.src = url; img.alt = 'QR code for ' + id;
       const label = document.createElement('span'); label.textContent = id;
-      const note = document.createElement('small'); note.textContent = 'JDVP Trainee';
+      const note = document.createElement('small'); note.textContent = QUALIFICATIONS[qualification];
       card.append(img, label, note);
       $('grid').appendChild(card);
     }
@@ -99,7 +109,7 @@ $('range-make').addEventListener('click', function () {
 
     $('range-make').disabled = false;
     $('range-zip').disabled = $('range-print').disabled = false;
-    $('range-status').textContent = total + ' QR codes ready. Download the ZIP or print the sheet.';
+    $('range-status').textContent = total + ' ' + QUALIFICATIONS[qualification] + ' QR codes ready. Download the ZIP or print the sheet.';
     setTimeout(function () { $('progress').style.display = 'none'; }, 800);
   })();
 });
