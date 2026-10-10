@@ -5,6 +5,22 @@
 
 ---
 
+## 👥 Project Team & Attribution
+
+### Group NEXUS
+| Role | Name | Responsibilities |
+| :--- | :--- | :--- |
+| **Project Leader** | **Henrich Gutierrez Angeles** | Project coordination, system architecture, core integration |
+| **Senior Programmer** | **Gabriel Luis Pineda** | Documentation Paper, Beta Tester, API Borrower, Code Inspector |
+| **Junior Programmer** | **Martin A. Cubol** | Frontend scripting, QR scanning modules, bug fixes |
+| **Analyst** | **Criz Darwin B. Aceres** | Requirements gathering, process mapping, data validation |
+| **UI/UX Designer** | **Aniel John Menorca** | Responsive UI design, print layouts, component styling |
+| **Secretary** | **Camille Cabamongan** | Technical documentation, user manuals, project records |
+
+### Support Members
+* **Joriel Gonzales**
+* **Eduard Solomon**
+
 ## 1. System Overview
 The **JDVP Attendance Monitoring System** is a web-based QR scanning and automated logging solution designed for the Joint Delivery Voucher Program (JDVP) at Luis Y. Ferrer Jr. Senior High School. The system replaces manual logbooks by reading unique student QR badges via camera and recording attendance in real-time to Google Sheets across 6 technical qualifications.
 
