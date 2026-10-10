@@ -12,7 +12,7 @@
 | :--- | :--- | :--- |
 | **Project Leader** | **Henrich Gutierrez Angeles** | Project coordination, system architecture, core integration |
 | **Senior Programmer** | **Gabriel Luis Pineda** | Documentation Paper, Beta Tester, API Borrower, Code Inspector |
-| **Junior Programmer** | **Martin A. Cubol** | Frontend scripting, QR scanning modules, bug fixes |
+| **Junior Programmer** | **Martin A. Cubol** | Backend Scripting, QR scanning modules, bug fixes |
 | **Analyst** | **Criz Darwin B. Aceres** | Requirements gathering, process mapping, data validation |
 | **UI/UX Designer** | **Aniel John Menorca** | Responsive UI design, print layouts, component styling |
 | **Secretary** | **Camille Cabamongan** | Technical documentation, user manuals, project records |
