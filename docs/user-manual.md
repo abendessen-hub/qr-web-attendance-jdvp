@@ -40,51 +40,63 @@ The system is protected by 7 authorized operator accounts:
 
 ---
 
-## 3. Registering Trainees & Generating QR Badges
-Navigate to **Generate QR** from the main dashboard:
+## 3. Generating QR Badges & Printing
+Navigate to **Generate QR** from the main menu:
 
-### Registering a New Trainee:
-1. Select the student's **Qualification** from the dropdown menu (e.g. `6 - SMAW NC II`).
-2. Type the trainee's **Full Name** (e.g., `Juan Dela Cruz`).
-3. The system automatically fetches and displays the **Next Available ID** (e.g., `60001`).
-4. Click **Register & Generate**.
-5. The trainee's information is registered into Google Sheets (`Registry` tab), and their unique QR badge preview is displayed.
-6. Click **Download PNG** to save the QR code image.
+### Generating a Single Badge:
+1. Enter a 4-digit Student Badge ID (e.g. `0001` to `0400`).
+2. Click **Generate**. The QR code preview card appears below.
+3. Click **Download PNG** to save the QR badge image (`0001.png`).
 
-### Printing Badges on Standard A4 Paper:
-1. Under **Registered trainees**, select the qualification you want to print (or select *All*).
-2. Click **Load** to load the list of registered students.
-3. Click **Print all badges**.
-4. The system opens your browser print dialog pre-formatted for standard **A4 paper** (3 columns x 4 rows per sheet, centered with even margins and high-contrast cutting guides).
+### Generating a Batch Range & Printing Badges:
+1. Under **A range of students**, enter the starting ID in **From** (e.g. `0001`) and the ending ID in **To** (e.g. `0400`).
+2. Click **Generate range**. A live progress bar displays generation status across the screen grid.
+3. Once generated:
+   - Click **Download ZIP** to export a compressed `.zip` file containing individual PNG badge files (e.g., `jdvp-qr-codes-0001-to-0400.zip`).
+   - Click **Print sheet (A4)** to open the browser print window. The layout is optimized for standard **A4 paper** fitting 12 QR badges per page (3 columns x 4 rows) with centered alignment and cutting guides.
+
+*Note: Qualification and trainee identity are bound automatically when the 4-digit badge is scanned for the first time on the Scan QR page.*
 
 ---
 
-## 4. Attendance Scanning Workflow
-Navigate to **Scan QR** from the main dashboard:
+## 4. Attendance Scanning & Trainee Registration Workflow
+Navigate to **Scan QR** from the main menu:
 
-1. Allow camera permissions when prompted by your browser (requires an HTTPS or localhost connection).
-2. Point the device camera at the trainee's QR code.
+1. **Camera Access:** Allow camera permissions when prompted by your browser (requires HTTPS or localhost connection).
+2. **Scanning Methods:**
+   - **Continuous Camera Scanner:** Hold the trainee's QR code in front of the camera view.
+   - **Snap Photo of QR:** Tap **📸 Snap Photo of QR** to capture a high-resolution snapshot frame. Tap **↩ Undo / Retake Photo** to return to live scanning.
+   - **Choose Photo File:** Tap **📁 Choose Photo** to upload or select a QR image from your device gallery.
+   - **Flashlight:** Tap **Flashlight** on supported mobile devices to toggle the camera flash in low-light environments.
 
-### Scanning Status Indicators:
-- **First Scan of the Day (Time In):**
+### On-the-Fly Trainee Quick Registration:
+When an unregistered 4-digit badge (e.g. `0001`) is scanned for the first time:
+1. A **Register Trainee** modal pops up automatically.
+2. The scanned 4-digit badge is displayed in **Scanned 4-Digit Badge** (e.g. `0001`).
+3. Select the student's **Qualification** from the dropdown menu (e.g. `6 - Shielded Metal Arc Welding (SMAW) NC II`).
+4. The system automatically calculates and previews the assigned **5-Digit Trainee ID** (e.g. `60001`, combining the qualification prefix `6` + `0001`).
+5. Enter the student's **Full Name** (e.g., `Juan Dela Cruz`).
+6. Click **Register & Record Attendance**. The student is registered into their qualification's Google Sheet tab, and their **Time In** is logged immediately.
+
+### Scanning Status Alerts:
+- **Time In (First scan of the day):**
   - **Green Alert:** `[Student Name] ([ID]) — Time In: [HH:MM AM/PM]`
-  - Logged into the student's qualification sheet with `Time In` recorded and `Time Out` left blank.
+  - Records student info and Time In timestamp in their qualification sheet.
 - **Scan Before 3:00 PM:**
   - **Yellow Alert:** `Not Time out yet`
-  - Existing Time In remains intact; Time Out is not recorded.
+  - Keeps initial Time In intact without recording Time Out.
 - **Valid Time Out (3:00 PM – 5:00 PM):**
   - **Green Alert:** `[Student Name] ([ID]) — Time Out: [HH:MM AM/PM]`
-  - Updates the student's row for today with their `Time Out` timestamp.
+  - Updates today's entry with the Time Out timestamp.
 - **Already Completed for Today:**
   - **Yellow Alert:** `Attendance already completed for today.`
-  - Prevents accidental repeated scans from creating duplicates.
-- **Unregistered Trainee Scan:**
-  - **Red Alert:** `Trainee is not registered yet.`
-  - A quick-registration popup opens automatically. Select the qualification, input the student's full name, and click **Register & Record Attendance**. The system registers the student and immediately records their Time In.
+  - Prevents duplicate logs.
+- **Unregistered Badge:**
+  - **Red Alert:** `Badge [ID] is not registered yet.` Opens the quick registration modal.
 
-### Manual ID Entry Fallback:
-If a camera is unavailable or a printed QR code is damaged:
-1. Enter the 5-digit Trainee ID into the manual input box (e.g., `60001`).
+### Manual Entry Fallback:
+If the camera is unavailable or a badge is damaged:
+1. Enter the 4-digit badge (e.g. `0001`) or 5-digit Trainee ID (e.g. `60001`) into the manual input box under **Camera not working?**.
 2. Click **Record attendance**.
 
 ---
