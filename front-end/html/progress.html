@@ -7,77 +7,108 @@
 <link rel="stylesheet" href="/front-end/css/style.css">
 </head>
 <body>
-<main class="wrap">
-  <div class="page-shell">
-    <header class="page-header">
+<main class="wrap progress-view">
+  <div class="page-shell progress-page-shell">
+    <header class="page-header progress-header">
       <div class="title-block">
-        <span class="eyebrow">Progress</span>
-        <h1>JDVP A.I.M.S</h1>
+        <span class="eyebrow">Attendance overview</span>
+        <h1>Progress dashboard</h1>
+        <p>Track attendance activity and trainee records in one place.</p>
       </div>
-      <a class="back" href="/home">Home</a>
+      <a class="back" href="/home"><span aria-hidden="true">←</span> Home</a>
     </header>
 
-    <!-- Summary Cards -->
-    <section class="panel">
+    <section class="panel progress-summary" aria-label="Attendance summary">
       <div class="stats-cards">
         <div class="stat-card">
-          <span class="stat-num" id="stat-total-students">0</span>
-          <span class="stat-label">Total Trainees Registered</span>
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">Total trainees registered</span>
+            <span class="stat-num" id="stat-total-students">0</span>
+          </span>
         </div>
         <div class="stat-card">
-          <span class="stat-num" id="stat-today-attendance">0</span>
-          <span class="stat-label">Active Scans Today</span>
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">Active scans today</span>
+            <span class="stat-num" id="stat-today-attendance">0</span>
+          </span>
         </div>
         <div class="stat-card">
-          <span class="stat-num" id="stat-total-records">0</span>
-          <span class="stat-label">Total Attendance Logs</span>
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">Total attendance logs</span>
+            <span class="stat-num" id="stat-total-records">0</span>
+          </span>
         </div>
       </div>
     </section>
 
-    <!-- Section 1: Attendance Progress by Date (History & Bar Chart) -->
-    <section class="panel">
-      <h2>Attendance Progress by Date</h2>
-      <p class="hint">Daily attendance totals for the qualifications available to your account.</p>
-      
-      <div id="date-chart" class="chart-container" aria-label="Attendance per day bar chart">
-        <div class="chart-loading">Loading chart…</div>
-      </div>
+    <div class="progress-chart-grid">
+      <section class="panel progress-panel">
+        <div class="progress-section-heading">
+          <span class="section-icon" aria-hidden="true">01</span>
+          <div>
+            <h2>Attendance by date</h2>
+            <p class="hint">Daily attendance totals across your available qualifications.</p>
+          </div>
+        </div>
 
-      <div class="table-wrap" style="margin-top: 14px; max-height: 220px;">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Total Students Recorded</th>
-            </tr>
-          </thead>
-          <tbody id="history-rows">
-            <tr><td colspan="2" class="table-empty">Loading history…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+        <div id="date-chart" class="chart-container" aria-label="Attendance per day bar chart">
+          <div class="chart-loading">Loading chart…</div>
+        </div>
 
-    <!-- Section 2: Attendance by Qualification -->
-    <section class="panel">
-      <h2>Attendance by Qualification</h2>
-      <p class="hint">Total unique trainees recorded per specialization.</p>
-      
-      <div id="qual-chart" class="chart-container" aria-label="Attendance by qualification">
-        <div class="chart-loading">Loading qualification statistics…</div>
-      </div>
-    </section>
+        <div class="table-wrap progress-history-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Total students recorded</th>
+              </tr>
+            </thead>
+            <tbody id="history-rows">
+              <tr><td colspan="2" class="table-empty">Loading history…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-    <!-- Section 3: Daily Student History & Filterable Attendance Table -->
-    <section class="panel">
-      <h2>Daily Student Attendance History</h2>
-      <div class="row">
+      <section class="panel progress-panel">
+        <div class="progress-section-heading">
+          <span class="section-icon section-icon-alt" aria-hidden="true">02</span>
+          <div>
+            <h2>By qualification</h2>
+            <p class="hint">Unique trainees recorded in each specialization.</p>
+          </div>
+        </div>
+
+        <div id="qual-chart" class="chart-container" aria-label="Attendance by qualification">
+          <div class="chart-loading">Loading qualification statistics…</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel progress-panel progress-records">
+      <div class="progress-section-heading">
+        <span class="section-icon section-icon-alt" aria-hidden="true">03</span>
         <div>
+          <h2>Daily attendance records</h2>
+          <p class="hint">Find and review individual trainee check-ins.</p>
+        </div>
+      </div>
+
+      <div class="progress-filters">
+        <div class="progress-filter-field">
           <label for="filter-date">Select Date</label>
           <input id="filter-date" type="date">
         </div>
-        <div>
+        <div class="progress-filter-field">
           <label for="filter-qual">Qualification</label>
           <select id="filter-qual">
             <option value="">All Qualifications</option>
@@ -89,22 +120,23 @@
             <option value="SMAW NC III">SMAW NC III</option>
           </select>
         </div>
-      </div>
-      <div class="row">
-        <div style="flex: 2 1 14rem;">
+        <div class="progress-filter-field progress-search-field">
           <label for="search-student">Search Trainee ID or Name</label>
-          <input id="search-student" type="search" placeholder="Search by ID (e.g. 60001) or name…">
+          <input id="search-student" type="search" placeholder="Search by ID or name">
         </div>
-        <button class="btn ghost" id="btn-clear" type="button">Clear</button>
-        <button class="btn" id="btn-refresh" type="button">Refresh</button>
+        <div class="progress-filter-buttons">
+          <button class="btn ghost" id="btn-clear" type="button">Clear filters</button>
+          <button class="btn" id="btn-refresh" type="button">Refresh records</button>
+        </div>
       </div>
 
-      <div class="stats">
+      <div class="progress-results-bar">
         <span>Showing <strong id="count-shown">0</strong></span>
-        <span>Total filtered <strong id="count-total">0</strong></span>
+        <span class="progress-results-divider" aria-hidden="true"></span>
+        <span>All records <strong id="count-total">0</strong></span>
       </div>
 
-      <div class="table-wrap">
+      <div class="table-wrap progress-records-wrap">
         <table>
           <thead>
             <tr>
