@@ -8,27 +8,44 @@
 </head>
 <body>
 <main class="wrap">
-  <div class="hero">
-    <h1>JDVP Monitoring Track</h1>
-    <p>Luis Y. Ferrer Jr. Senior High School</p>
-  </div>
+  <div class="auth-shell">
+    <section class="brand-panel" aria-label="JDVP monitor overview">
+      <div class="brand-badge">JDVP</div>
+      <p class="eyebrow">Attendance system</p>
+      <h1>Monitoring Track</h1>
+      <p>Luis Y. Ferrer Jr. Senior High School</p>
+      <ul class="feature-list">
+        <li>Live QR scanning</li>
+        <li>Qualification-based access</li>
+        <li>Attendance progress tracking</li>
+      </ul>
+    </section>
 
-  <section class="panel">
-    <form id="login-form" autocomplete="off">
-      <div class="row">
-        <div>
-          <label for="username-input">Username</label>
-          <input id="username-input" type="text" placeholder="1trainee2026" required>
-        </div>
-        <div>
-          <label for="password-input">Password</label>
-          <input id="password-input" type="password" placeholder="••••" required>
-        </div>
-        <button class="btn" type="submit">Enter</button>
+    <section class="login-panel panel" aria-label="Operator login">
+      <div class="panel-header">
+        <p class="eyebrow">Operator access</p>
+        <h2>Sign in</h2>
       </div>
-    </form>
-    <p class="hint">Enter your assigned operator username and password.</p>
-  </section>
+      <form id="login-form" autocomplete="off">
+        <div class="row">
+          <div>
+            <label for="username-input">Username</label>
+            <input id="username-input" type="text" placeholder="1trainee2026" required>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="password-input">Password</label>
+            <input id="password-input" type="password" placeholder="••••" required>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn" type="submit">Enter</button>
+        </div>
+      </form>
+      <p class="hint">Enter your assigned operator username and password.</p>
+    </section>
+  </div>
 </main>
 <script src="back-end/js/login.js"></script>
 </body>
