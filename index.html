@@ -26,7 +26,7 @@
         <p class="eyebrow">Operator access</p>
         <h2>Sign in</h2>
       </div>
-      <form id="login-form" autocomplete="off">
+      <form id="login-form" autocomplete="off" novalidate>
         <div class="row">
           <div>
             <label for="username-input">Username</label>
@@ -46,6 +46,8 @@
       <p class="hint">Enter your assigned operator username and password.</p>
     </section>
   </div>
+
+  <div id="form-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
 </main>
 <script src="back-end/js/login.js"></script>
 </body>
