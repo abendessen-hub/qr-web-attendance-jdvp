@@ -7,9 +7,6 @@
     { "source": "/progress", "destination": "/front-end/html/progress.html" },
     { "source": "/home", "destination": "/front-end/html/home.html" }
   ],
-  "redirects": [
-    { "source": "/records", "destination": "/progress", "permanent": true }
-  ],
   "headers": [
     {
       "source": "/(.*)",
