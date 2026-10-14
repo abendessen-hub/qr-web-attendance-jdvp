@@ -99,47 +99,38 @@ function findTrainee(code) {
   const textCode = String(code || '').trim();
   const ss = SpreadsheetApp.getActive();
 
-  // 1. If 5-digit Trainee ID (e.g. 60001)
-  if (textCode.length === 5) {
-    const qualName = qualFromId(textCode);
-    if (!qualName) return null;
+  function findInSheet(id, qualName) {
     const sh = ss.getSheetByName(qualName);
     if (!sh) return null;
     const last = sh.getLastRow();
     if (last <= 1) return null;
 
-    const rows = sh.getRange(2, 1, last - 1, 2).getValues();
-    for (let i = 0; i < rows.length; i++) {
-      if (String(rows[i][0]).trim() === textCode) {
-        return {
-          id: textCode,
-          name: String(rows[i][1]).trim(),
-          qualification: qualName
-        };
-      }
-    }
-    return null;
+    const match = sh.getRange(2, 1, last - 1, 1)
+      .createTextFinder(id)
+      .matchEntireCell(true)
+      .findNext();
+    if (!match) return null;
+
+    return {
+      id: id,
+      name: String(sh.getRange(match.getRow(), 2).getValue()).trim(),
+      qualification: qualName
+    };
+  }
+
+  // 1. If 5-digit Trainee ID (e.g. 60001)
+  if (textCode.length === 5) {
+    const qualName = qualFromId(textCode);
+    if (!qualName) return null;
+    return findInSheet(textCode, qualName);
   }
 
   // 2. If 4-digit badge (e.g. 0001) -> check all 6 sheets for matching Q + 0001
   if (textCode.length === 4) {
     for (const [prefix, qualName] of Object.entries(QUALIFICATIONS)) {
-      const sh = ss.getSheetByName(qualName);
-      if (!sh) continue;
-      const last = sh.getLastRow();
-      if (last <= 1) continue;
-
       const target5 = prefix + textCode; // e.g. 60001
-      const rows = sh.getRange(2, 1, last - 1, 2).getValues();
-      for (let i = 0; i < rows.length; i++) {
-        if (String(rows[i][0]).trim() === target5) {
-          return {
-            id: target5,
-            name: String(rows[i][1]).trim(),
-            qualification: qualName
-          };
-        }
-      }
+      const trainee = findInSheet(target5, qualName);
+      if (trainee) return trainee;
     }
     return null;
   }
@@ -152,14 +143,44 @@ function text(v, tz, p) {
   return String(v || '');
 }
 
+function normalizeSearchText(value) {
+  return String(value || '')
+    .replace(/\+/g, ' ')                  // 1. Convert URL plus signs back to spaces first
+    .normalize('NFD')                     // 2. Separate letters from their accent marks
+    .replace(/[\u0300-\u036f]/g, '')      // 3. Strip out the accent marks (e.g., é -> e)
+    .toLowerCase()                        // 4. Convert to lowercase
+    .replace(/[^\p{L}\p{N}\p{M}\s]+/gu, ' ') // 5. Replace punctuation/symbols with spaces (keeping whitespace \s)
+    .replace(/\s+/g, ' ')                 // 6. Collapse multiple spaces into one
+    .trim();                              // 7. Trim leading/trailing spaces
+}
+
+function normalizeQualificationName(value) {
+  const normalized = String(value || '')
+    .replace(/\+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+  return Object.values(QUALIFICATIONS).find(function(name) {
+    return name.toLowerCase() === normalized;
+  }) || '';
+}
+
 function reply(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function doPost(e) {
+function withScriptLock(callback) {
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);
+  try {
+    return callback();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
     switch (body.action) {
@@ -171,8 +192,6 @@ function doPost(e) {
     }
   } catch (err) {
     return reply({ status: 'error', message: String(err) });
-  } finally {
-    lock.releaseLock();
   }
 }
 
@@ -184,37 +203,53 @@ function registerTrainee(body) {
   if (!QUALIFICATIONS[qp]) return reply({ status: 'error', message: 'Invalid qualification.' });
 
   const qualName = QUALIFICATIONS[qp];
-  const ss = SpreadsheetApp.getActive();
-  let sh = ss.getSheetByName(qualName);
-  if (!sh) {
-    setup();
-    sh = ss.getSheetByName(qualName);
-  }
-
-  let id = body.id ? String(body.id).trim() : null;
-  if (!id || id.length !== 5) {
-    id = getNextId(qp);
-  }
-  if (qualFromId(id) !== qualName) {
+  const requestedId = body.id ? String(body.id).trim() : null;
+  if (requestedId && requestedId.length === 5 && qualFromId(requestedId) !== qualName) {
     return reply({ status: 'error', message: 'Trainee ID does not match the selected qualification.' });
   }
 
-  const existing = findTrainee(id);
-  if (existing) {
-    return reply({
-      status: 'ok',
-      id: existing.id,
-      name: existing.name || name,
-      qualification: existing.qualification
-    });
+  if (requestedId && requestedId.length === 5) {
+    const existing = findTrainee(requestedId);
+    if (existing) {
+      return reply({
+        status: 'ok',
+        id: existing.id,
+        name: existing.name || name,
+        qualification: existing.qualification
+      });
+    }
   }
 
-  const row = sh.getLastRow() + 1;
-  sh.getRange(row, 1).setNumberFormat('@').setValue(id);
-  sh.getRange(row, 2).setValue(name);
-  sh.getRange(row, 3, 1, 3).setNumberFormat('@').setValues([['', '', '']]);
+  return withScriptLock(function() {
+    const ss = SpreadsheetApp.getActive();
+    let sh = ss.getSheetByName(qualName);
+    if (!sh) {
+      setup();
+      sh = ss.getSheetByName(qualName);
+    }
 
-  return reply({ status: 'ok', id: id, name: name, qualification: qualName });
+    const id = requestedId && requestedId.length === 5 ? requestedId : getNextId(qp);
+    if (qualFromId(id) !== qualName) {
+      return reply({ status: 'error', message: 'Trainee ID does not match the selected qualification.' });
+    }
+
+    const existing = findTrainee(id);
+    if (existing) {
+      return reply({
+        status: 'ok',
+        id: existing.id,
+        name: existing.name || name,
+        qualification: existing.qualification
+      });
+    }
+
+    const row = sh.getLastRow() + 1;
+    sh.getRange(row, 1, 1, 5)
+      .setNumberFormat('@')
+      .setValues([[id, name, '', '', '']]);
+
+    return reply({ status: 'ok', id: id, name: name, qualification: qualName });
+  });
 }
 
 // Scans attendance for either 4-digit badge or 5-digit Trainee ID
@@ -222,16 +257,25 @@ function recordScan(body) {
   const code = String(body.id || '').trim();
   const t = findTrainee(code);
 
-  // If badge or ID is not registered yet
   if (!t) {
-    const badge4 = code.length === 4 ? code : (code.length === 5 ? code.slice(-4) : code);
-    return reply({
-      status: 'not_registered',
-      id: code,
-      badge: badge4
+    return withScriptLock(function() {
+      const registeredTrainee = findTrainee(code);
+      if (!registeredTrainee) {
+        const badge4 = code.length === 4 ? code : (code.length === 5 ? code.slice(-4) : code);
+        return reply({
+          status: 'not_registered',
+          id: code,
+          badge: badge4
+        });
+      }
+      return recordScanForTrainee(body, registeredTrainee, true);
     });
   }
 
+  return recordScanForTrainee(body, t, false);
+}
+
+function recordScanForTrainee(body, t, lockAlreadyHeld) {
   const requestedQualification = String(body.qualification || '').trim();
   if (requestedQualification && (!QUALIFICATIONS[requestedQualification] ||
       QUALIFICATIONS[requestedQualification] !== t.qualification)) {
@@ -247,75 +291,92 @@ function recordScan(body) {
   const sh = ss.getSheetByName(qualName);
   if (!sh) return reply({ status: 'not_registered', id: id, badge: id.slice(-4) });
 
-  const tz    = ss.getSpreadsheetTimeZone();
-  const now   = new Date();
-  const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
-  const hour  = parseInt(Utilities.formatDate(now, tz, 'HH'), 10);
-  const stamp = Utilities.formatDate(now, tz, 'hh:mm a');
+  const tz = ss.getSpreadsheetTimeZone();
+  const recordAttendance = function() {
+    const now   = new Date();
+    const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+    const hour  = parseInt(Utilities.formatDate(now, tz, 'HH'), 10);
+    const stamp = Utilities.formatDate(now, tz, 'hh:mm a');
 
-  const last = sh.getLastRow();
-  let placeholderRowIndex = -1;
+    const last = sh.getLastRow();
+    let placeholderRowIndex = -1;
 
-  if (last > 1) {
-    const rows = sh.getRange(2, 1, last - 1, 5).getValues();
+    if (last > 1) {
+      const matches = sh.getRange(2, 1, last - 1, 1)
+        .createTextFinder(id)
+        .matchEntireCell(true)
+        .findAll();
 
-    for (let i = 0; i < rows.length; i++) {
-      const rId = String(rows[i][0]).trim();
-      if (rId !== id) continue;
+      for (const match of matches) {
+        const rowIndex = match.getRow();
+        const [dateValue, timeInValue, timeOutValue] = sh.getRange(rowIndex, 3, 1, 3).getValues()[0];
+        const rDate = text(dateValue, tz);
+        const rTimeIn = String(timeInValue || '').trim();
+        const rTimeOut = String(timeOutValue || '').trim();
 
-      const rDate = text(rows[i][2], tz);
-      const rTimeIn = String(rows[i][3]).trim();
-      const rTimeOut = String(rows[i][4]).trim();
-
-      // Check if there is an unactivated registration row (Date is empty)
-      if (!rDate && !rTimeIn) {
-        placeholderRowIndex = i + 2;
-        continue;
-      }
-
-      // Check if trainee already has a record for TODAY
-      if (rDate === today) {
-        if (rTimeOut) {
-          return reply({
-            status: 'already_completed',
-            id: id,
-            name: t.name,
-            message: 'Attendance already completed for today.'
-          });
+        // Check if there is an unactivated registration row (Date is empty)
+        if (!rDate && !rTimeIn) {
+          placeholderRowIndex = rowIndex;
+          continue;
         }
 
-        if (!isTimeOutAllowed(hour, body.allowAnyTime === true)) {
-          const message = hour < TIME_OUT_START
-            ? 'Not Time out yet'
-            : 'The Time Out window has ended. Time Out is available until 10:00 PM.';
+        // Check if trainee already has a record for TODAY
+        if (rDate === today) {
+          if (rTimeOut) {
+            return reply({
+              status: 'already_completed',
+              id: id,
+              name: t.name,
+              message: 'Attendance already completed for today.'
+            });
+          }
+
+          if (!isTimeOutAllowed(hour, body.allowAnyTime === true)) {
+            const message = hour < TIME_OUT_START
+              ? 'Not Time out yet'
+              : 'The Time Out window has ended. Time Out is available until 10:00 PM.';
+            return reply({
+              status: hour < TIME_OUT_START ? 'not_time_out' : 'time_window',
+              id: id,
+              name: t.name,
+              message: message
+            });
+          }
+
+          sh.getRange(rowIndex, 5).setNumberFormat('@').setValue(stamp);
           return reply({
-            status: hour < TIME_OUT_START ? 'not_time_out' : 'time_window',
+            status: 'time_out',
             id: id,
             name: t.name,
-            message: message
+            time: stamp
           });
         }
-
-        sh.getRange(i + 2, 5).setNumberFormat('@').setValue(stamp);
-        return reply({
-          status: 'time_out',
-          id: id,
-          name: t.name,
-          time: stamp
-        });
       }
     }
-  }
 
-  if (body.restrictedTimeWindow === true && !isWithinTimeInWindow(hour)) {
-    return reply({
-      status: 'time_window',
-      message: 'Time In can only be recorded from 7:00 AM to 3:00 PM.'
-    });
-  }
+    if (body.restrictedTimeWindow === true && !isWithinTimeInWindow(hour)) {
+      return reply({
+        status: 'time_window',
+        message: 'Time In can only be recorded from 7:00 AM to 3:00 PM.'
+      });
+    }
 
-  if (placeholderRowIndex > 0) {
-    sh.getRange(placeholderRowIndex, 3, 1, 3).setNumberFormat('@').setValues([[today, stamp, '']]);
+    if (placeholderRowIndex > 0) {
+      sh.getRange(placeholderRowIndex, 3, 1, 3).setNumberFormat('@').setValues([[today, stamp, '']]);
+      return reply({
+        status: 'time_in',
+        id: id,
+        name: t.name,
+        time: stamp,
+        date: today
+      });
+    }
+
+    const newRow = last + 1;
+    sh.getRange(newRow, 1).setNumberFormat('@').setValue(id);
+    sh.getRange(newRow, 2).setValue(t.name);
+    sh.getRange(newRow, 3, 1, 3).setNumberFormat('@').setValues([[today, stamp, '']]);
+
     return reply({
       status: 'time_in',
       id: id,
@@ -323,20 +384,9 @@ function recordScan(body) {
       time: stamp,
       date: today
     });
-  }
+  };
 
-  const newRow = last + 1;
-  sh.getRange(newRow, 1).setNumberFormat('@').setValue(id);
-  sh.getRange(newRow, 2).setValue(t.name);
-  sh.getRange(newRow, 3, 1, 3).setNumberFormat('@').setValues([[today, stamp, '']]);
-
-  return reply({
-    status: 'time_in',
-    id: id,
-    name: t.name,
-    time: stamp,
-    date: today
-  });
+  return lockAlreadyHeld ? recordAttendance() : withScriptLock(recordAttendance);
 }
 
 function nextId(body) {
@@ -356,11 +406,40 @@ function doGet(e) {
   try {
     const ss = SpreadsheetApp.getActive();
     const tz = ss.getSpreadsheetTimeZone();
+    const parameters = (e && e.parameter) || {};
+    const action = String(parameters.action || '');
     const records = [];
+    const matchingRecords = [];
     const traineesMap = {};
-    const requestedQualification = String((e && e.parameter && e.parameter.qualification) || '').trim();
+    const dateCounts = {};
+    const qualificationTrainees = {};
+    const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+    let todayAttendance = 0;
+    let totalRecords = 0;
+    let recordOrder = 0;
+
+    const requestedQualification = String(parameters.qualification || '').trim();
     if (requestedQualification && !QUALIFICATIONS[requestedQualification]) {
       return reply({ status: 'error', message: 'Invalid qualification.', records: [], trainees: [] });
+    }
+
+    const filterDate = String(parameters.date || '').trim();
+    const rawFilterQualification = String(parameters.filterQualification || '').trim();
+    const filterQualification = normalizeQualificationName(rawFilterQualification);
+    const search = normalizeSearchText(parameters.search);
+    const searchTerms = search ? search.split(' ').filter(Boolean) : [];
+    if (action === 'records' && filterDate && !/^\d{4}-\d{2}-\d{2}$/.test(filterDate)) {
+      return reply({ status: 'error', message: 'Invalid date filter.', records: [] });
+    }
+    if (rawFilterQualification && !filterQualification) {
+      return reply({ status: 'error', message: 'Invalid qualification filter.', records: [] });
+    }
+
+    const page = Number(parameters.page || 1);
+    const pageSize = Number(parameters.pageSize || 50);
+    if (action === 'records' &&
+        (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100)) {
+      return reply({ status: 'error', message: 'Invalid pagination parameters.', records: [] });
     }
 
     for (const [prefix, qualName] of Object.entries(QUALIFICATIONS)) {
@@ -386,16 +465,72 @@ function doGet(e) {
         }
 
         if (rDate && rTimeIn) {
-          records.push({
+          const record = {
             id: rId,
             name: rName,
             qualification: qualName,
             date: rDate,
             timeIn: rTimeIn,
             timeOut: rTimeOut
-          });
+          };
+          if (action !== 'records') records.push(record);
+          totalRecords++;
+          dateCounts[rDate] = (dateCounts[rDate] || 0) + 1;
+          if (rDate === today) todayAttendance++;
+          if (!qualificationTrainees[qualName]) qualificationTrainees[qualName] = {};
+          qualificationTrainees[qualName][rId] = true;
+
+          if (action === 'records') {
+            const matchesDate = !filterDate || rDate === filterDate;
+            const matchesQualification = !filterQualification || qualName === filterQualification;
+            const normalizedId = normalizeSearchText(rId);
+            const normalizedName = normalizeSearchText(rName);
+            const matchesSearch = !search || 
+              normalizedId.includes(search) || 
+              normalizedName.includes(search) ||
+              searchTerms.every(function(term) {
+                return normalizedId.includes(term) || normalizedName.includes(term);
+            });
+            if (matchesDate && matchesQualification && matchesSearch) {
+              matchingRecords.push({ record: record, order: recordOrder });
+            }
+          }
+          recordOrder++;
         }
       }
+    }
+
+    if (action === 'records') {
+      matchingRecords.sort(function(a, b) {
+        return b.record.date.localeCompare(a.record.date) || b.order - a.order;
+      });
+
+      const totalFilteredRecords = matchingRecords.length;
+      const start = (page - 1) * pageSize;
+      const pagedRecords = matchingRecords.slice(start, start + pageSize)
+        .map(function(entry) { return entry.record; });
+      const qualificationCounts = {};
+      for (const [qualification, ids] of Object.entries(qualificationTrainees)) {
+        qualificationCounts[qualification] = Object.keys(ids).length;
+      }
+
+      return reply({
+        status: 'ok',
+        records: pagedRecords,
+        pagination: {
+          page: page,
+          pageSize: pageSize,
+          total: totalFilteredRecords,
+          totalPages: Math.ceil(totalFilteredRecords / pageSize)
+        },
+        summary: {
+          totalTrainees: Object.keys(traineesMap).length,
+          todayAttendance: todayAttendance,
+          totalRecords: totalRecords,
+          dateCounts: dateCounts,
+          qualificationCounts: qualificationCounts
+        }
+      });
     }
 
     const trainees = Object.values(traineesMap).sort(function(a, b) {

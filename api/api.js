@@ -11,6 +11,14 @@ const QUALIFICATION_NAMES = {
   '6': 'SMAW NC III'
 };
 
+function normalizeQualificationName(value) {
+  return String(value || '')
+    .replace(/\+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
 function requestWithRedirects(targetUrl, method, postBody, redirectCount = 0) {
   if (redirectCount > 5) return Promise.reject(new Error('Too many redirects'));
 
@@ -112,12 +120,24 @@ module.exports = async function proxy(req, res) {
     if (req.method === 'GET' && req.url) {
       const requestUrl = new URL(req.url, 'https://vercel.invalid');
       const requestedQualification = requestUrl.searchParams.get('qualification');
+      const requestedFilterQualification = requestUrl.searchParams.get('filterQualification');
+      const filterQualification = Object.values(QUALIFICATION_NAMES).find((name) =>
+        normalizeQualificationName(name) === normalizeQualificationName(requestedFilterQualification)
+      );
       if (!session.admin && requestedQualification && requestedQualification !== session.qualification) {
         return json(res, 403, { status: 'error', message: 'This account can only access its assigned qualification.' });
       }
       if (session.admin && requestedQualification && !/^[1-6]$/.test(requestedQualification)) {
         return json(res, 400, { status: 'error', message: 'Invalid qualification.' });
       }
+      if (requestedFilterQualification && !filterQualification) {
+        return json(res, 400, { status: 'error', message: 'Invalid qualification filter.' });
+      }
+      if (!session.admin && filterQualification &&
+          filterQualification !== QUALIFICATION_NAMES[session.qualification]) {
+        return json(res, 403, { status: 'error', message: 'This account can only access its assigned qualification.' });
+      }
+      if (filterQualification) requestUrl.searchParams.set('filterQualification', filterQualification);
       if (!session.admin) requestUrl.searchParams.set('qualification', session.qualification);
       const query = requestUrl.search;
       if (query) target += (target.includes('?') ? '&' : '?') + query.slice(1);

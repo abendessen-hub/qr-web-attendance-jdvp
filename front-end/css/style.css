@@ -1580,6 +1580,21 @@ input::placeholder {
   background: var(--line-strong)
 }
 
+.progress-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: .85rem
+}
+
+.progress-pagination .btn {
+  min-height: 38px;
+  padding: 7px 14px
+}
+
 .progress-records-wrap {
   max-height: min(62vh, 620px)
 }

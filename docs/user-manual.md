@@ -131,6 +131,7 @@ Navigate to **Progress** from the main dashboard:
    - Filter records by **Date** (defaults to all/selectable dates).
    - Filter records by **Qualification** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC I`, `SMAW NC II`).
    - Search records in real-time by **Trainee ID** or **Student Name**.
+   - Browse matching attendance history 50 records at a time; summary cards and charts continue to cover the full available history.
    - View exact `Time In` and `Time Out` timestamps for each student.
    - Click **Refresh** to sync with Google Sheets.
 

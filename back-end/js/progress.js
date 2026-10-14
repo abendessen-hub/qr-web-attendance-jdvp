@@ -3,8 +3,13 @@
 
 const $ = function (id) { return document.getElementById(id); };
 
-let allRecords = [];
-let allTrainees = [];
+let currentRecords = [];
+let summary = null;
+let currentPage = 1;
+let totalPages = 1;
+let searchTimer = null;
+let loadRequestId = 0;
+const PAGE_SIZE = 50;
 
 const ALL_QUAL_LIST = [
   'Cookery',
@@ -36,9 +41,11 @@ function getTodayIso() {
   return y + '-' + m + '-' + d;
 }
 
-// ─── Fetch All Data from Backend ───
-async function loadAllData() {
+// ─── Fetch a page of records and the all-time dashboard summaries ───
+async function loadAllData(page = currentPage) {
+  const requestId = ++loadRequestId;
   await configReady;
+  if (requestId !== loadRequestId) return;
   if (!apiReady()) {
     $('table-message').textContent = 'API URL is not configured yet.';
     return;
@@ -57,54 +64,53 @@ async function loadAllData() {
       }
     }
 
-    // 1. Fetch attendance records
-    const res = await fetch(CONFIG.API_URL);
-    const data = await res.json();
-    allRecords = (data.records || []).slice().reverse(); // newest first
+    const params = new URLSearchParams({
+      action: 'records',
+      page: String(page),
+      pageSize: String(PAGE_SIZE)
+    });
+    const date = $('filter-date').value;
+    const qualification = $('filter-qual').value;
+    const search = $('search-student').value.trim();
+    if (date) params.set('date', date);
+    if (qualification) params.set('filterQualification', qualification);
+    if (search) params.set('search', search);
 
-    // 2. Fetch master trainee registry
-    try {
-      const regRes = await fetch(CONFIG.API_URL + '?action=registry');
-      const regData = await regRes.json();
-      allTrainees = regData.trainees || [];
-    } catch (_) {
-      allTrainees = [];
+    const res = await fetch(CONFIG.API_URL + '?' + params.toString());
+    if (requestId !== loadRequestId) return;
+    if (!res.ok) throw new Error('Attendance API returned HTTP ' + res.status + '.');
+    const data = await res.json();
+    if (requestId !== loadRequestId) return;
+    if (data.status !== 'ok') throw new Error(data.message || 'Could not load attendance records.');
+    if (!data.pagination || !data.summary) {
+      throw new Error('Attendance API does not support paginated records yet. Redeploy the latest Apps Script.');
     }
 
-    renderSummaryCards();
-    renderDailyHistoryAndChart();
-    renderQualificationProgress();
-    renderFilteredTable();
+    currentRecords = data.records || [];
+    summary = data.summary;
+    currentPage = data.pagination.page;
+    totalPages = Math.max(data.pagination.totalPages, 1);
+
+    renderSummaryCards(summary);
+    renderDailyHistoryAndChart(summary.dateCounts);
+    renderQualificationProgress(summary.qualificationCounts);
+    renderFilteredTable(data.pagination);
   } catch (err) {
-    $('table-message').textContent = 'Failed to load records from Google Sheets. Check connection and click Refresh.';
+    if (requestId !== loadRequestId) return;
+    $('table-message').textContent = err.message || 'Failed to load records from Google Sheets. Check connection and click Refresh.';
     console.error('Error loading progress data:', err);
   }
 }
 
 // ─── Summary Stat Cards ───
-function renderSummaryCards() {
-  const today = getTodayIso();
-  const todayLogs = allRecords.filter(function (r) { return r.date === today; });
-
-  // If registry was fetched, use its count, else calculate unique IDs from records
-  const totalStudents = allTrainees.length > 0 
-    ? allTrainees.length 
-    : new Set(allRecords.map(function (r) { return r.id; })).size;
-
-  $('stat-total-students').textContent = totalStudents;
-  $('stat-today-attendance').textContent = todayLogs.length;
-  $('stat-total-records').textContent = allRecords.length;
+function renderSummaryCards(data) {
+  $('stat-total-students').textContent = data.totalTrainees;
+  $('stat-today-attendance').textContent = data.todayAttendance;
+  $('stat-total-records').textContent = data.totalRecords;
 }
 
 // ─── Daily History Table & Bar Chart ───
-function renderDailyHistoryAndChart() {
-  // Aggregate records by date
-  const dateCounts = {}; // { '2026-10-08': count }
-  allRecords.forEach(function (r) {
-    if (!r.date) return;
-    dateCounts[r.date] = (dateCounts[r.date] || 0) + 1;
-  });
-
+function renderDailyHistoryAndChart(dateCounts) {
   // Sort dates chronologically
   const dates = Object.keys(dateCounts).sort();
 
@@ -181,31 +187,14 @@ function renderDailyHistoryAndChart() {
 }
 
 // ─── Qualification Progress Chart ───
-function renderQualificationProgress() {
+function renderQualificationProgress(qualCounts) {
   const qualifications = CONFIG.IS_ADMIN
     ? ALL_QUAL_LIST.slice()
     : [QUALIFICATIONS[CONFIG.QUALIFICATION]];
-  const qualCounts = {};
-  qualifications.forEach(function (q) { qualCounts[q] = 0; });
-
-  // Count unique trainees per qualification from records
-  const qualStudents = {};
-  qualifications.forEach(function (q) { qualStudents[q] = new Set(); });
-
-  allRecords.forEach(function (r) {
-    if (r.qualification) {
-      if (!qualStudents[r.qualification]) {
-        qualStudents[r.qualification] = new Set();
-        if (CONFIG.IS_ADMIN && !qualifications.includes(r.qualification)) {
-          qualifications.push(r.qualification);
-        }
-      }
-      qualStudents[r.qualification].add(r.id);
+  Object.keys(qualCounts).forEach(function (qualification) {
+    if (CONFIG.IS_ADMIN && !qualifications.includes(qualification)) {
+      qualifications.push(qualification);
     }
-  });
-
-  qualifications.forEach(function (q) {
-    qualCounts[q] = qualStudents[q] ? qualStudents[q].size : 0;
   });
 
   const chartContainer = $('qual-chart');
@@ -250,26 +239,12 @@ function renderQualificationProgress() {
 }
 
 // ─── Daily Student History & Filtering Table ───
-function renderFilteredTable() {
+function renderFilteredTable(pagination) {
   const today = getTodayIso();
-  const targetDate = $('filter-date').value;
-  const targetQual = $('filter-qual').value;
-  const search = $('search-student').value.trim().toLowerCase();
-
-  const filtered = allRecords.filter(function (r) {
-    const matchDate = !targetDate || r.date === targetDate;
-    const matchQual = !targetQual || r.qualification === targetQual;
-    const matchSearch = !search || 
-      (r.id && r.id.toLowerCase().indexOf(search) !== -1) ||
-      (r.name && r.name.toLowerCase().indexOf(search) !== -1);
-
-    return matchDate && matchQual && matchSearch;
-  });
-
   const body = $('records-body');
   body.replaceChildren();
 
-  filtered.forEach(function (r) {
+  currentRecords.forEach(function (r) {
     const tr = document.createElement('tr');
     
     const tdId = document.createElement('td');
@@ -305,12 +280,18 @@ function renderFilteredTable() {
     body.appendChild(tr);
   });
 
-  $('count-shown').textContent = filtered.length;
-  $('count-total').textContent = allRecords.length;
+  const firstRecord = pagination.total ? (pagination.page - 1) * pagination.pageSize + 1 : 0;
+  const lastRecord = Math.min(pagination.page * pagination.pageSize, pagination.total);
+  $('count-shown').textContent = firstRecord + '–' + lastRecord;
+  $('count-filtered').textContent = pagination.total;
+  $('count-total').textContent = summary.totalRecords;
+  $('page-label').textContent = 'Page ' + pagination.page + ' of ' + Math.max(pagination.totalPages, 1);
+  $('prev-page').disabled = pagination.page <= 1;
+  $('next-page').disabled = pagination.page >= pagination.totalPages;
 
-  if (filtered.length > 0) {
+  if (currentRecords.length > 0) {
     $('table-message').textContent = '';
-  } else if (allRecords.length > 0) {
+  } else if (summary.totalRecords > 0 || $('search-student').value.trim()) {
     $('table-message').textContent = 'No records match your selected filters. Try clearing filters.';
   } else {
     $('table-message').textContent = 'No attendance recorded in the system yet.';
@@ -318,16 +299,26 @@ function renderFilteredTable() {
 }
 
 // ─── Event Listeners ───
-$('filter-date').addEventListener('input', renderFilteredTable);
-$('filter-qual').addEventListener('change', renderFilteredTable);
-$('search-student').addEventListener('input', renderFilteredTable);
-$('btn-refresh').addEventListener('click', loadAllData);
+$('filter-date').addEventListener('input', function () { loadAllData(1); });
+$('filter-qual').addEventListener('change', function () { loadAllData(1); });
+$('search-student').addEventListener('input', function () {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(function () { loadAllData(1); }, 250);
+});
+$('btn-refresh').addEventListener('click', function () { loadAllData(currentPage); });
+$('prev-page').addEventListener('click', function () {
+  if (currentPage > 1) loadAllData(currentPage - 1);
+});
+$('next-page').addEventListener('click', function () {
+  if (currentPage < totalPages) loadAllData(currentPage + 1);
+});
 
 $('btn-clear').addEventListener('click', function () {
+  clearTimeout(searchTimer);
   $('filter-date').value = '';
   $('filter-qual').value = '';
   $('search-student').value = '';
-  renderFilteredTable();
+  loadAllData(1);
 });
 
 // Initial load

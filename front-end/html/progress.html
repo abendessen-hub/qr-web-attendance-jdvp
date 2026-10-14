@@ -131,7 +131,7 @@
       </div>
 
       <div class="progress-results-bar">
-        <span>Showing <strong id="count-shown">0</strong></span>
+        <span>Showing <strong id="count-shown">0</strong> of <strong id="count-filtered">0</strong> matching records</span>
         <span class="progress-results-divider" aria-hidden="true"></span>
         <span>All records <strong id="count-total">0</strong></span>
       </div>
@@ -152,6 +152,11 @@
         </table>
         <div id="table-message" role="status">Loading attendance records…</div>
       </div>
+      <nav class="progress-pagination" aria-label="Attendance record pages">
+        <button class="btn ghost" id="prev-page" type="button" disabled>Previous</button>
+        <span id="page-label" aria-live="polite">Page 1 of 1</span>
+        <button class="btn ghost" id="next-page" type="button" disabled>Next</button>
+      </nav>
     </section>
   </div>
 </main>
