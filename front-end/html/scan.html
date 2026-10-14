@@ -51,47 +51,6 @@
 
     <div id="result" role="status" aria-live="polite">Hold QR code steady within the camera frame.</div>
 
-    <!-- On-the-fly Trainee Registration Modal -->
-    <div id="reg-modal" class="modal-backdrop" hidden>
-      <div class="modal">
-        <h2>Register Trainee</h2>
-        <p class="hint">This 4-digit badge is not registered yet. Select the student's qualification and enter their name to assign their Trainee ID (QNNNN).</p>
-        <form id="quick-reg-form" autocomplete="off">
-          <div class="row">
-            <div>
-              <label>Scanned 4-Digit Badge</label>
-              <input id="reg-badge-preview" type="text" readonly style="font-weight: 700;">
-            </div>
-            <div>
-              <label for="reg-qual">Select Qualification</label>
-              <select id="reg-qual" disabled>
-                <option value="1">1 - Cookery</option>
-                <option value="2">2 - House Keeping</option>
-                <option value="3">3 - Computer System Servicing (CSS)</option>
-                <option value="4">4 - Electrical Installation and Maintenance (EIM)</option>
-                <option value="5">5 - Shielded Metal Arc Welding (SMAW) NC II</option>
-                <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC III</option>
-              </select>
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label>Assigned Trainee ID (QNNNN)</label>
-              <input id="reg-id-preview" type="text" readonly style="font-weight: 800; font-size: 1.15rem; color: var(--brand);">
-            </div>
-            <div>
-              <label for="reg-name">Full Name</label>
-              <input id="reg-name" type="text" placeholder="Juan Dela Cruz" required>
-            </div>
-          </div>
-          <div class="row">
-            <button class="btn" type="submit">Register & Record Attendance</button>
-            <button class="btn ghost" id="reg-cancel" type="button">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <!-- Manual Entry Fallback -->
     <section class="panel">
       <h2>Camera not working? Enter Badge or Trainee ID</h2>
@@ -108,6 +67,46 @@
     </section>
   </div>
 </main>
+<!-- On-the-fly Trainee Registration Modal -->
+<div id="reg-modal" class="modal-backdrop" hidden>
+  <div class="modal">
+    <h2>Register Trainee</h2>
+    <p class="hint">This 4-digit badge is not registered yet. Select the student's qualification and enter their name to assign their Trainee ID (QNNNN).</p>
+    <form id="quick-reg-form" autocomplete="off">
+      <div class="row">
+        <div>
+          <label>Scanned 4-Digit Badge</label>
+          <input id="reg-badge-preview" type="text" readonly style="font-weight: 700;">
+        </div>
+        <div>
+          <label for="reg-qual">Select Qualification</label>
+          <select id="reg-qual" disabled>
+            <option value="1">1 - Cookery</option>
+            <option value="2">2 - House Keeping</option>
+            <option value="3">3 - Computer System Servicing (CSS)</option>
+            <option value="4">4 - Electrical Installation and Maintenance (EIM)</option>
+            <option value="5">5 - Shielded Metal Arc Welding (SMAW) NC II</option>
+            <option value="6">6 - Shielded Metal Arc Welding (SMAW) NC III</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Assigned Trainee ID (QNNNN)</label>
+          <input id="reg-id-preview" type="text" readonly style="font-weight: 800; font-size: 1.15rem; color: var(--brand);">
+        </div>
+        <div>
+          <label for="reg-name">Full Name</label>
+          <input id="reg-name" type="text" placeholder="Juan Dela Cruz" required>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" type="submit">Register & Record Attendance</button>
+        <button class="btn ghost" id="reg-cancel" type="button">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
 <footer class="site-footer">
   <div class="footer-brand">
     <img class="footer-brand-logo" src="/assets/company_logo.jpg" alt="JDVP brand logo">

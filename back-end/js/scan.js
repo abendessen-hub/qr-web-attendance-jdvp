@@ -114,6 +114,8 @@ async function record(id) {
   busy = true;
   lastId = id;
   lastAt = Date.now();
+  resultEl.className = 'processing';
+  resultEl.textContent = 'Recording attendance for ' + id + '…';
 
   try {
     await configReady;
@@ -123,9 +125,6 @@ async function record(id) {
     busy = false;
     return;
   }
-
-  resultEl.className = 'processing';
-  resultEl.textContent = 'Verifying ID ' + id + '…';
 
   try {
     const data = await postAction({ action: 'scan', id: id });
