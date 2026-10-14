@@ -43,6 +43,7 @@
   --palette-bad: rgb(var(--rgb-bad));
   --palette-bad-bg: #fee2e2;
   --palette-bad-border-soft: #fecaca;
+  --palette-bad-text: #da2417;
   --palette-bad-deep: #b42318;
   --palette-bad-light: #fff5f5;
   --palette-bad-border: #efb2b8;
@@ -66,6 +67,7 @@
 
   --rgb-white: 255, 255, 255;
   --rgb-black: 0, 0, 0;
+  
   --rgb-brand: 15, 91, 216;
   --rgb-overlay: 15, 23, 42;
   --rgb-brand-line: 191, 213, 248;
@@ -1848,6 +1850,15 @@ tbody tr:last-child td {
 
 .tag-done {
   color: var(--palette-ok);
+  font-weight: 600
+}
+
+.tag-failed {
+  color: var(--palette-bad-deep);
+  background: var(--palette-bad-light);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: .8rem;
   font-weight: 600
 }
 

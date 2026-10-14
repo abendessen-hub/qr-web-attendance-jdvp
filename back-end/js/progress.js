@@ -47,7 +47,6 @@ async function loadAllData() {
   $('table-message').textContent = 'Loading records from Google Sheets…';
   $('date-chart').innerHTML = '<div class="chart-loading">Loading chart…</div>';
   $('qual-chart').innerHTML = '<div class="chart-loading">Loading statistics…</div>';
-
   try {
     if (!CONFIG.IS_ADMIN) {
       const assignedName = QUALIFICATIONS[CONFIG.QUALIFICATION];
@@ -252,6 +251,7 @@ function renderQualificationProgress() {
 
 // ─── Daily Student History & Filtering Table ───
 function renderFilteredTable() {
+  const today = getTodayIso();
   const targetDate = $('filter-date').value;
   const targetQual = $('filter-qual').value;
   const search = $('search-student').value.trim().toLowerCase();
@@ -294,7 +294,11 @@ function renderFilteredTable() {
     if (r.timeOut) {
       tdOut.innerHTML = '<span class="tag-done">' + r.timeOut + '</span>';
     } else {
-      tdOut.innerHTML = '<span class="tag-pending">Pending</span>';
+      if (r.date && r.date < today) {
+        tdOut.innerHTML = '<span class="tag-failed">Failed</span>';
+      } else {
+        tdOut.innerHTML = '<span class="tag-pending">Pending</span>';
+      }
     }
 
     tr.append(tdId, tdName, tdQual, tdDate, tdIn, tdOut);
