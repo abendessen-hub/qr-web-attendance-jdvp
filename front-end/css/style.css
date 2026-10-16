@@ -1062,6 +1062,12 @@ input::placeholder {
   border-color: rgba(var(--rgb-bad), .18)
 }
 
+.toast-ok {
+  background: linear-gradient(180deg, var(--palette-white) 0%, var(--palette-ok-light) 100%);
+  color: var(--palette-ok);
+  border-color: rgba(var(--rgb-white), .18)
+}
+
 .toast::before {
   content: "!";
   display: inline-grid;

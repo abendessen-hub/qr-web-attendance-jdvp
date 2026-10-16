@@ -307,6 +307,23 @@ test('a trainee with only a previous-day record gets today recorded and confirme
   );
 });
 
+test('scans for separate registered trainees do not hold the script lock', () => {
+  const sheet = createSheet([
+    ['40001', 'Trainee One', '', '', ''],
+    ['40002', 'Trainee Two', '', '', '']
+  ]);
+  const { recordScan, lockState, output } = loadBackend(sheet);
+
+  recordScan({ id: '40001', restrictedTimeWindow: true });
+  assert.equal(JSON.parse(output.content).status, 'time_in');
+  recordScan({ id: '40002', restrictedTimeWindow: true });
+
+  assert.equal(JSON.parse(output.content).status, 'time_in');
+  assert.deepEqual(lockState, { acquired: 0, released: 0 });
+  assert.deepEqual(sheet.rows[1], ['40001', 'Trainee One', '2026-10-14', '09:15 AM', '']);
+  assert.deepEqual(sheet.rows[2], ['40002', 'Trainee Two', '2026-10-14', '09:15 AM', '']);
+});
+
 test('qualification filters normalize case and plus-encoded spaces', () => {
   const { normalizeQualificationName } = loadBackend(createSheet([]));
   assert.equal(normalizeQualificationName('house+keeping'), 'House Keeping');

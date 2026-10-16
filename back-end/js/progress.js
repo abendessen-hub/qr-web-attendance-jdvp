@@ -16,8 +16,8 @@ const ALL_QUAL_LIST = [
   'House Keeping',
   'CSS',
   'EIM',
-  'SMAW NC II',
-  'SMAW NC III'
+  'SMAW NC I',
+  'SMAW NC II'
 ];
 
 function formatDateDisplay(isoDateStr) {

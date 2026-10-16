@@ -1,6 +1,8 @@
 // Continuous QR scanner with live camera preview and fallback connection
 // Supports 4-digit badges (0001) that become 5-digit Trainee IDs (QNNNN)
 
+import('/back-end/js/notification.js');
+
 const resultEl = document.getElementById('result');
 const manualForm = document.getElementById('manual-form');
 const manualInput = document.getElementById('manual-id');
@@ -22,9 +24,8 @@ const regSubmitBtn = quickRegForm.querySelector('button[type="submit"]');
 const SAME_CODE_COOLDOWN_MS = 3000;
 const REQUEST_TIMEOUT_MS = 30000;
 
-let busy = false;
-let lastId = '';
-let lastAt = 0;
+const processingIds = new Set();
+const recentScanAt = new Map();
 let lastBadAt = 0;
 let registeringTrainee = false;
 let scanner = null;
@@ -48,6 +49,7 @@ function beep(ok) {
 function show(kind, message) {
   resultEl.className = kind;
   resultEl.textContent = message;
+  showToast(message, kind === 'ok' ? 'ok' : (kind === 'dup' ? 'error' : 'error'));
   if (navigator.vibrate) navigator.vibrate(kind === 'ok' ? 120 : [80, 60, 80]);
   beep(kind === 'ok');
 }
@@ -109,11 +111,10 @@ async function postAction(payload) {
 }
 
 async function record(id) {
-  if (busy || registeringTrainee) return;
+  if (registeringTrainee || processingIds.has(id)) return;
 
-  busy = true;
-  lastId = id;
-  lastAt = Date.now();
+  processingIds.add(id);
+  recentScanAt.set(id, Date.now());
   resultEl.className = 'processing';
   resultEl.textContent = 'Recording attendance for ' + id + '…';
 
@@ -121,8 +122,8 @@ async function record(id) {
     await configReady;
   } catch (err) {
     show('bad', err.message || 'Could not verify account access.');
-    lastAt = Date.now();
-    busy = false;
+    recentScanAt.set(id, Date.now());
+    processingIds.delete(id);
     return;
   }
 
@@ -134,7 +135,7 @@ async function record(id) {
     } else if (data.status === 'time_out') {
       show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime Out: ' + data.time);
     } else if (data.status === 'not_time_out') {
-      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Not Time out yet (Window: 3:00 PM - 10:00 PM)');
+      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Not Time out yet (Window: 3:00 PM - 08:00 PM)');
     } else if (data.status === 'already_completed') {
       show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Attendance already completed for today.');
     } else if (data.status === 'time_window') {
@@ -156,9 +157,13 @@ async function record(id) {
       show('bad', 'Connection error: ' + (err.message || 'Please check network and try again.'));
     }
   } finally {
-    lastAt = Date.now();
-    busy = false;
+    recentScanAt.set(id, Date.now());
+    processingIds.delete(id);
   }
+}
+
+function hasActiveWork() {
+  return registeringTrainee || processingIds.size > 0;
 }
 
 // ---------- Qualification Selection & Persistence ----------
@@ -172,7 +177,7 @@ function updateQualHint() {
     if (qualHint) {
       qualHint.innerHTML = '<strong>Please select a qualification first</strong> before scanning or manual entry.';
     }
-    if (!busy) {
+    if (!hasActiveWork()) {
       resultEl.textContent = 'Please select a qualification above to begin.';
     }
   } else {
@@ -180,7 +185,7 @@ function updateQualHint() {
     if (qualHint) {
       qualHint.innerHTML = 'Active: <strong>' + qualName + '</strong> (4-digit badge 0001 &rarr; Trainee ID <strong>' + qp + '0001</strong>)';
     }
-    if (!busy) {
+    if (!hasActiveWork()) {
       resultEl.textContent = 'Ready for ' + qualName + '. Hold QR code steady within the camera frame.';
     }
   }
@@ -300,7 +305,6 @@ quickRegForm.addEventListener('submit', async function (e) {
   };
 
   registeringTrainee = true;
-  busy = true;
   regSubmitBtn.disabled = true;
   closeQuickRegistration();
   show('', 'Registering ' + name + ' (' + assignedId + ')…');
@@ -320,12 +324,10 @@ quickRegForm.addEventListener('submit', async function (e) {
 
     registeringTrainee = false;
     regSubmitBtn.disabled = false;
-    busy = false;
     record(assignedId);
   } catch (err) {
     registeringTrainee = false;
     regSubmitBtn.disabled = false;
-    busy = false;
     openQuickRegistration(registration.badge);
     regQualSelect.value = registration.qualification;
     regNameInput.value = registration.name;
@@ -336,8 +338,11 @@ quickRegForm.addEventListener('submit', async function (e) {
 
 // ---------- Continuous Live Scan ----------
 function onScan(text) {
-  if (busy || !regModal.hidden) return;
+  if (registeringTrainee || !regModal.hidden) return;
   const now = Date.now();
+  for (const [recentId, scannedAt] of recentScanAt) {
+    if (now - scannedAt >= SAME_CODE_COOLDOWN_MS) recentScanAt.delete(recentId);
+  }
 
   const selectedQual = getSelectedQualification();
   if (!selectedQual) {
@@ -355,7 +360,7 @@ function onScan(text) {
     return;
   }
 
-  if (id === lastId && now - lastAt < SAME_CODE_COOLDOWN_MS) {
+  if (now - (recentScanAt.get(id) || 0) < SAME_CODE_COOLDOWN_MS) {
     return;
   }
 

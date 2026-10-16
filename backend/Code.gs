@@ -7,8 +7,8 @@
  * 2. House Keeping
  * 3. CSS
  * 4. EIM
- * 5. SMAW NC II
- * 6. SMAW NC III
+ * 5. SMAW NC I
+ * 6. SMAW NC II
  *
  * Columns: Trainee ID | Name | Date | Time In | Time Out
  *
@@ -27,12 +27,12 @@ const QUALIFICATIONS = {
   '2': 'House Keeping',
   '3': 'CSS',
   '4': 'EIM',
-  '5': 'SMAW NC II',
-  '6': 'SMAW NC III'
+  '5': 'SMAW NC I',
+  '6': 'SMAW NC II'
 };
 
 const TIME_OUT_START = 15; // 3:00 PM (24-hour format)
-const TIME_OUT_END = 22;   // 10:00 PM (24-hour format)
+const TIME_OUT_END = 20;   // 08:00 PM (24-hour format)
 
 function setup() {
   const ss = SpreadsheetApp.getActive();
@@ -258,24 +258,24 @@ function recordScan(body) {
   const t = findTrainee(code);
 
   if (!t) {
-    return withScriptLock(function() {
-      const registeredTrainee = findTrainee(code);
-      if (!registeredTrainee) {
-        const badge4 = code.length === 4 ? code : (code.length === 5 ? code.slice(-4) : code);
-        return reply({
-          status: 'not_registered',
-          id: code,
-          badge: badge4
-        });
-      }
-      return recordScanForTrainee(body, registeredTrainee, true);
+    const registeredTrainee = withScriptLock(function() {
+      return findTrainee(code);
     });
+    if (!registeredTrainee) {
+      const badge4 = code.length === 4 ? code : (code.length === 5 ? code.slice(-4) : code);
+      return reply({
+        status: 'not_registered',
+        id: code,
+        badge: badge4
+      });
+    }
+    return recordScanForTrainee(body, registeredTrainee);
   }
 
-  return recordScanForTrainee(body, t, false);
+  return recordScanForTrainee(body, t);
 }
 
-function recordScanForTrainee(body, t, lockAlreadyHeld) {
+function recordScanForTrainee(body, t) {
   const requestedQualification = String(body.qualification || '').trim();
   if (requestedQualification && (!QUALIFICATIONS[requestedQualification] ||
       QUALIFICATIONS[requestedQualification] !== t.qualification)) {
@@ -292,7 +292,7 @@ function recordScanForTrainee(body, t, lockAlreadyHeld) {
   if (!sh) return reply({ status: 'not_registered', id: id, badge: id.slice(-4) });
 
   const tz = ss.getSpreadsheetTimeZone();
-  const recordAttendance = function() {
+  const recordAttendance = function(lockHeld) {
     const now   = new Date();
     const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
     const hour  = parseInt(Utilities.formatDate(now, tz, 'HH'), 10);
@@ -334,7 +334,7 @@ function recordScanForTrainee(body, t, lockAlreadyHeld) {
           if (!isTimeOutAllowed(hour, body.allowAnyTime === true)) {
             const message = hour < TIME_OUT_START
               ? 'Not Time out yet'
-              : 'The Time Out window has ended. Time Out is available until 10:00 PM.';
+              : 'The Time Out window has ended. Time Out is available until 08:00 PM.';
             return reply({
               status: hour < TIME_OUT_START ? 'not_time_out' : 'time_window',
               id: id,
@@ -372,7 +372,13 @@ function recordScanForTrainee(body, t, lockAlreadyHeld) {
       });
     }
 
-    const newRow = last + 1;
+    if (!lockHeld) {
+      return withScriptLock(function() {
+        return recordAttendance(true);
+      });
+    }
+
+    const newRow = sh.getLastRow() + 1;
     sh.getRange(newRow, 1).setNumberFormat('@').setValue(id);
     sh.getRange(newRow, 2).setValue(t.name);
     sh.getRange(newRow, 3, 1, 3).setNumberFormat('@').setValues([[today, stamp, '']]);
@@ -386,7 +392,7 @@ function recordScanForTrainee(body, t, lockAlreadyHeld) {
     });
   };
 
-  return lockAlreadyHeld ? recordAttendance() : withScriptLock(recordAttendance);
+  return recordAttendance(false);
 }
 
 function nextId(body) {

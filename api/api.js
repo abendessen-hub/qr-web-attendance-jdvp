@@ -7,8 +7,8 @@ const QUALIFICATION_NAMES = {
   '2': 'House Keeping',
   '3': 'CSS',
   '4': 'EIM',
-  '5': 'SMAW NC II',
-  '6': 'SMAW NC III'
+  '5': 'SMAW NC I',
+  '6': 'SMAW NC II'
 };
 
 function normalizeQualificationName(value) {
