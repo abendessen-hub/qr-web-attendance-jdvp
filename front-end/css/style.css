@@ -1031,11 +1031,24 @@ input::placeholder {
   flex: 1 1 12rem
 }
 
-.toast {
+.toast-stack {
   position: fixed;
-  top: 22px;
-  right: 22px;
-  max-width: min(440px, calc(100vw - 32px));
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(420px, calc(100vw - 28px));
+  z-index: 2000;
+  pointer-events: none
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
   padding: 14px 18px;
   border-radius: 14px;
   background: linear-gradient(180deg, var(--palette-white) 0%, var(--palette-bad-pale) 100%);
@@ -1044,16 +1057,13 @@ input::placeholder {
   box-shadow: 0 16px 28px rgba(var(--rgb-pink), .12);
   font-weight: 700;
   opacity: 0;
-  pointer-events: none;
-  transform: translateY(-12px) scale(.96);
+  transform: translateX(18px) scale(.98);
   transition: opacity .2s ease, transform .2s ease;
-  z-index: 2000
 }
 
 .toast.is-visible {
   opacity: 1;
-  transform: translateY(0) scale(1);
-  animation: toastSlide .34s ease both
+  transform: translateX(0) scale(1)
 }
 
 .toast-error {
@@ -1076,8 +1086,7 @@ input::placeholder {
   height: 22px;
   border-radius: 50%;
   background: rgba(var(--rgb-pink), .12);
-  margin-right: 10px;
-  vertical-align: middle;
+  flex: 0 0 auto;
   font-size: .8rem;
   font-weight: 900
 }
@@ -1085,6 +1094,17 @@ input::placeholder {
 .toast-error::before {
   content: "!";
   background: rgba(var(--rgb-bad), .1)
+}
+
+.toast-ok::before {
+  content: "✓";
+  background: rgba(var(--rgb-success), .08);
+  color: var(--palette-ok)
+}
+
+.toast-ok::before {
+  content: "!";
+  background: rgba(var(--rgb-white), .1)
 }
 
 /* Modal for On-the-fly Trainee Registration */

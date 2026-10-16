@@ -291,10 +291,13 @@ function renderFilteredTable(pagination) {
 
   if (currentRecords.length > 0) {
     $('table-message').textContent = '';
+    $('table-message').hidden = false;
   } else if (summary.totalRecords > 0 || $('search-student').value.trim()) {
     $('table-message').textContent = 'No records match your selected filters. Try clearing filters.';
+    $('table-message').hidden = true;
   } else {
     $('table-message').textContent = 'No attendance recorded in the system yet.';
+    $('table-message').hidden = true;
   }
 }
 

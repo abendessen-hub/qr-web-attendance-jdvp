@@ -1,4 +1,4 @@
-import('/back-end/js/notification.js');
+import { showNotification } from '/back-end/js/notification.js';
 
 const $ = function (id) { return document.getElementById(id); };
 
@@ -51,10 +51,10 @@ async function verifyLogin(e) {
     }
 
     markLoginError();
-    showToast(data.message || 'Incorrect username or password. Access denied.', 'error');
+    showNotification(data.message || 'Incorrect username or password. Access denied.', 'error');
   } catch (_) {
     markLoginError();
-    showToast('Unable to reach the sign-in service. Please try again.', 'error');
+    showNotification('Unable to reach the sign-in service. Please try again.', 'error');
   }
 }
 

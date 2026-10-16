@@ -1,7 +1,6 @@
 // Continuous QR scanner with live camera preview and fallback connection
 // Supports 4-digit badges (0001) that become 5-digit Trainee IDs (QNNNN)
-
-import('/back-end/js/notification.js');
+import { showNotification } from '/back-end/js/notification.js';
 
 const resultEl = document.getElementById('result');
 const manualForm = document.getElementById('manual-form');
@@ -49,7 +48,8 @@ function beep(ok) {
 function show(kind, message) {
   resultEl.className = kind;
   resultEl.textContent = message;
-  showToast(message, kind === 'ok' ? 'ok' : (kind === 'dup' ? 'error' : 'error'));
+  const toastType = kind === 'ok' ? 'ok' : 'error';
+  showNotification(message, toastType);
   if (navigator.vibrate) navigator.vibrate(kind === 'ok' ? 120 : [80, 60, 80]);
   beep(kind === 'ok');
 }

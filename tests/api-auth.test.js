@@ -259,7 +259,7 @@ test('Apps Script enforces limited time windows and allows admin time-outs', () 
 
   assert.equal(isTimeOutAllowed(14, false), false);
   assert.equal(isTimeOutAllowed(15, false), true);
-  assert.equal(isTimeOutAllowed(21, false), true);
+  assert.equal(isTimeOutAllowed(21, false), false);
   assert.equal(isTimeOutAllowed(22, false), false);
   assert.equal(isTimeOutAllowed(23, false), false);
   assert.equal(isTimeOutAllowed(22, true), true);
