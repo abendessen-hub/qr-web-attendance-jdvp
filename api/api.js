@@ -2,6 +2,8 @@ const https = require('node:https');
 const http = require('node:http');
 const { json, getSession, parseJsonBody } = require('../api-lib/auth');
 
+const UPSTREAM_TIMEOUT_MS = 30000;
+
 const QUALIFICATION_NAMES = {
   '1': 'Cookery',
   '2': 'House Keeping',
@@ -19,10 +21,18 @@ function normalizeQualificationName(value) {
     .toLowerCase();
 }
 
-function requestWithRedirects(targetUrl, method, postBody, redirectCount = 0) {
+function requestWithRedirects(targetUrl, method, postBody, redirectCount = 0, deadline = Date.now() + UPSTREAM_TIMEOUT_MS) {
   if (redirectCount > 5) return Promise.reject(new Error('Too many redirects'));
 
   return new Promise((resolve, reject) => {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      const error = new Error('Upstream request timed out');
+      error.name = 'TimeoutError';
+      reject(error);
+      return;
+    }
+
     const url = new URL(targetUrl);
     const client = url.protocol === 'https:' ? https : http;
     const request = client.request(url, {
@@ -30,18 +40,31 @@ function requestWithRedirects(targetUrl, method, postBody, redirectCount = 0) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }
     }, (response) => {
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        clearTimeout(timeout);
+        response.resume();
         const redirectedUrl = new URL(response.headers.location, url).toString();
-        return requestWithRedirects(redirectedUrl, 'GET', null, redirectCount + 1)
+        return requestWithRedirects(redirectedUrl, 'GET', null, redirectCount + 1, deadline)
           .then(resolve)
           .catch(reject);
       }
 
       let data = '';
       response.on('data', (chunk) => { data += chunk; });
-      response.on('end', () => resolve({ statusCode: response.statusCode, body: data }));
+      response.on('end', () => {
+        clearTimeout(timeout);
+        resolve({ statusCode: response.statusCode, body: data });
+      });
     });
 
-    request.on('error', reject);
+    const timeout = setTimeout(() => {
+      const error = new Error('Upstream request timed out');
+      error.name = 'TimeoutError';
+      request.destroy(error);
+    }, remainingMs);
+    request.on('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
     if (postBody && method === 'POST') request.write(postBody);
     request.end();
   });
@@ -169,7 +192,10 @@ module.exports = async function proxy(req, res) {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
     return res.end(JSON.stringify(responseBody));
-  } catch (_) {
+  } catch (error) {
+    if (error && error.name === 'TimeoutError') {
+      return json(res, 504, { status: 'error', message: 'The attendance service did not respond in time. Please try again.' });
+    }
     return json(res, 500, { status: 'error', message: 'Internal server proxy error.' });
   }
 };

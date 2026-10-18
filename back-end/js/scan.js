@@ -10,7 +10,14 @@ const cameraStatus = document.getElementById('camera-status');
 const scanQualSelect = document.getElementById('scan-qual');
 const qualHint = document.getElementById('qual-hint');
 
+// Easter egg
+const tetosound = new Audio('/assets/teto-kasane.mp3')
+const tetoclosesound = new Audio('/assets/teto-close.mp3')
+tetoclosesound.preload = 'auto'
+tetosound.preload = 'auto'
+
 // Quick registration modal elements
+const tetoModal = document.getElementById('teto-modal');
 const regModal = document.getElementById('reg-modal');
 const quickRegForm = document.getElementById('quick-reg-form');
 const regBadgePreview = document.getElementById('reg-badge-preview');
@@ -18,6 +25,7 @@ const regQualSelect = document.getElementById('reg-qual');
 const regNameInput = document.getElementById('reg-name');
 const regIdPreview = document.getElementById('reg-id-preview');
 const regCancelBtn = document.getElementById('reg-cancel');
+const tetoCloseBtn = document.getElementById('teto-close');
 const regSubmitBtn = quickRegForm.querySelector('button[type="submit"]');
 
 const SAME_CODE_COOLDOWN_MS = 3000;
@@ -117,6 +125,19 @@ async function record(id) {
   recentScanAt.set(id, Date.now());
   resultEl.className = 'processing';
   resultEl.textContent = 'Recording attendance for ' + id + '…';
+
+  try {
+    if (id.includes('401')) {
+      tetoModal.hidden = false;
+      tetosound.currentTime = 0;
+      tetosound.play().catch(function (err) {
+        console.warn('Could not play Teto sound:', err);
+      });
+      showNotification('You really are stupid aren\'t you?', 'error');
+    }
+  } catch (err) {
+    console.error('Error checking for Easter egg:', err);
+  }
 
   try {
     await configReady;
@@ -288,6 +309,15 @@ function closeQuickRegistration() {
 
 regQualSelect.addEventListener('change', updateGeneratedIdPreview);
 regCancelBtn.addEventListener('click', closeQuickRegistration);
+
+
+tetoCloseBtn.addEventListener('click', function () {
+  tetoclosesound.currentTime = 0;
+  tetoclosesound.play().catch(function (err) {
+    console.warn('Could not play Teto close sound:', err);
+  });
+  tetoModal.hidden = true;
+});
 
 quickRegForm.addEventListener('submit', async function (e) {
   e.preventDefault();
