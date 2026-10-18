@@ -1069,13 +1069,15 @@ input::placeholder {
 .toast-error {
   background: linear-gradient(180deg, var(--palette-white) 0%, var(--palette-bad-paler) 100%);
   color: var(--palette-bad);
-  border-color: rgba(var(--rgb-bad), .18)
+  border-color: rgba(var(--rgb-bad), .18);
+  box-shadow: 0 16px 28px rgba(var(--rgb-bad), .12)
 }
 
 .toast-ok {
-  background: linear-gradient(180deg, var(--palette-white) 0%, var(--palette-ok-light) 100%);
+  background: linear-gradient(180deg, var(--palette-white) 0%, var(--palette-ok-wash) 100%);
   color: var(--palette-ok);
-  border-color: rgba(var(--rgb-white), .18)
+  border-color: var(--palette-ok-border);
+  box-shadow: 0 16px 28px rgba(var(--rgb-success), .12)
 }
 
 .toast::before {
@@ -1098,13 +1100,8 @@ input::placeholder {
 
 .toast-ok::before {
   content: "✓";
-  background: rgba(var(--rgb-success), .08);
+  background: rgba(var(--rgb-success), .12);
   color: var(--palette-ok)
-}
-
-.toast-ok::before {
-  content: "!";
-  background: rgba(var(--rgb-white), .1)
 }
 
 /* Modal for On-the-fly Trainee Registration */

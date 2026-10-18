@@ -104,7 +104,7 @@ async function postAction(payload) {
       return data;
     } catch (err) {
       if (ctrl.signal.aborted) {
-        const timeoutError = new Error('No response within 30 seconds. Attendance may already have been recorded. Check today\'s attendance before scanning again.');
+        const timeoutError = new Error('No response after 30 seconds. Attendance may already have been recorded; check today\'s attendance before scanning again.');
         timeoutError.name = 'TimeoutError';
         throw timeoutError;
       }
@@ -142,7 +142,7 @@ async function record(id) {
   try {
     await configReady;
   } catch (err) {
-    show('bad', err.message || 'Could not verify account access.');
+    show('bad', err.message || 'Unable to verify account access.');
     recentScanAt.set(id, Date.now());
     processingIds.delete(id);
     return;
@@ -152,30 +152,30 @@ async function record(id) {
     const data = await postAction({ action: 'scan', id: id });
     
     if (data.status === 'time_in') {
-      show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime In: ' + data.time);
+      show('ok', 'Time in recorded for ' + (data.name || 'Trainee') + ' (' + (data.id || id) + ') at ' + data.time + '.');
     } else if (data.status === 'time_out') {
-      show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime Out: ' + data.time);
+      show('ok', 'Time out recorded for ' + (data.name || 'Trainee') + ' (' + (data.id || id) + ') at ' + data.time + '.');
     } else if (data.status === 'not_time_out') {
-      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Not Time out yet (Window: 3:00 PM - 08:00 PM)');
+      show('dup', (data.name ? data.name + ' (' + (data.id || id) + '): ' : '') + 'Time out is available from 3:00 PM to 8:00 PM.');
     } else if (data.status === 'already_completed') {
-      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Attendance already completed for today.');
+      show('dup', (data.name ? data.name + ' (' + (data.id || id) + '): ' : '') + 'Attendance is already complete for today.');
     } else if (data.status === 'time_window') {
-      show('bad', data.message || 'Time In can only be recorded from 7:00 AM to 3:00 PM.');
+      show('bad', data.message || 'Time in is available from 7:00 AM to 3:00 PM.');
     } else if (data.status === 'wrong_qualification') {
-      show('bad', data.message || 'This trainee belongs to another qualification.');
+      show('bad', data.message || 'This trainee is not assigned to the selected qualification.');
     } else if (data.status === 'not_registered') {
-      show('bad', 'Badge ' + id + ' is not registered yet.');
+      show('bad', 'Badge ' + id + ' is not registered.');
       openQuickRegistration(id);
     } else if (data.status === 'invalid') {
-      show('bad', 'Invalid QR code.');
+      show('bad', 'This QR code is invalid.');
     } else {
-      show('bad', data.message || 'Could not record. Try again.');
+      show('bad', data.message || 'Could not record attendance. Please try again.');
     }
   } catch (err) {
     if (err.name === 'TimeoutError') {
       show('dup', err.message);
     } else {
-      show('bad', 'Connection error: ' + (err.message || 'Please check network and try again.'));
+      show('bad', err.message ? 'Could not connect: ' + err.message : 'Could not connect. Check your network and try again.');
     }
   } finally {
     recentScanAt.set(id, Date.now());
@@ -239,7 +239,7 @@ configReady.then(function () {
   }
   updateQualHint();
 }).catch(function (err) {
-  show('bad', err.message || 'Could not verify account access.');
+  show('bad', err.message || 'Unable to verify account access.');
 });
 
 if (scanQualSelect) {
@@ -274,7 +274,7 @@ function resolveTraineeId(rawText) {
   if (norm.length === 5) {
     const prefix = norm.charAt(0);
     if (prefix !== selectedQual) {
-      show('bad', 'ID ' + norm + ' belongs to ' + (QUALIFICATIONS[prefix] || 'another qualification') + ', not ' + QUALIFICATIONS[selectedQual] + '.');
+      show('bad', 'ID ' + norm + ' is assigned to ' + (QUALIFICATIONS[prefix] || 'another qualification') + ', not ' + QUALIFICATIONS[selectedQual] + '.');
       return null;
     }
     return norm;
@@ -350,7 +350,7 @@ quickRegForm.addEventListener('submit', async function (e) {
       throw new Error(regRes.message || 'Registration failed.');
     }
 
-    show('ok', 'Registered: ' + regRes.name + ' (' + assignedId + '). Recording Time In…');
+    show('ok', 'Registration complete for ' + regRes.name + ' (' + assignedId + '). Recording time in…');
 
     registeringTrainee = false;
     regSubmitBtn.disabled = false;
@@ -362,7 +362,7 @@ quickRegForm.addEventListener('submit', async function (e) {
     regQualSelect.value = registration.qualification;
     regNameInput.value = registration.name;
     updateGeneratedIdPreview();
-    show('bad', 'Registration failed: ' + (err.message || 'Please try again.'));
+    show('bad', 'Could not register trainee: ' + (err.message || 'Please try again.'));
   }
 });
 
@@ -466,10 +466,10 @@ async function startScanner() {
     console.error('Could not start QR scanner:', err);
     cameraStatus.hidden = false;
     cameraStatus.textContent = denied
-      ? 'Camera access is blocked. Allow camera permission in your browser settings, then reload.'
+      ? 'Camera access is blocked. Enable camera permissions in your browser settings, then reload.'
       : 'Camera unavailable. Use HTTPS, check browser camera permission, or use manual entry below.';
     show('bad', denied
-      ? 'Camera blocked. Allow camera permissions or use manual entry below.'
+      ? 'Camera access is blocked. Enable camera permissions or use manual entry below.'
       : 'Camera unavailable. Use HTTPS or manual entry below.');
   }
 }
