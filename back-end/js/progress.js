@@ -48,10 +48,12 @@ async function loadAllData(page = currentPage) {
   if (requestId !== loadRequestId) return;
   if (!apiReady()) {
     $('table-message').textContent = 'API URL is not configured yet.';
+    $('table-message').hidden = false;
     return;
   }
 
   $('table-message').textContent = 'Loading records from Google Sheets…';
+  $('table-message').hidden = false;
   $('date-chart').innerHTML = '<div class="chart-loading">Loading chart…</div>';
   $('qual-chart').innerHTML = '<div class="chart-loading">Loading statistics…</div>';
   try {
@@ -98,6 +100,7 @@ async function loadAllData(page = currentPage) {
   } catch (err) {
     if (requestId !== loadRequestId) return;
     $('table-message').textContent = err.message || 'Failed to load records from Google Sheets. Check connection and click Refresh.';
+    $('table-message').hidden = false;
     console.error('Error loading progress data:', err);
   }
 }
@@ -291,13 +294,13 @@ function renderFilteredTable(pagination) {
 
   if (currentRecords.length > 0) {
     $('table-message').textContent = '';
-    $('table-message').hidden = false;
+    $('table-message').hidden = true;
   } else if (summary.totalRecords > 0 || $('search-student').value.trim()) {
     $('table-message').textContent = 'No records match your selected filters. Try clearing filters.';
-    $('table-message').hidden = true;
+    $('table-message').hidden = false;
   } else {
     $('table-message').textContent = 'No attendance recorded in the system yet.';
-    $('table-message').hidden = true;
+    $('table-message').hidden = false;
   }
 }
 
