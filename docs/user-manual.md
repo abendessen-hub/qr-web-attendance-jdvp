@@ -134,6 +134,7 @@ Navigate to **Progress** from the main dashboard:
    - Browse matching attendance history 50 records at a time; summary cards and charts continue to cover the full available history.
    - View exact `Time In` and `Time Out` timestamps for each student.
    - Click **Refresh** to sync with Google Sheets.
+   - Select both a date and qualification, then click **Download attendance check (.xlsx)** to export every trainee from `assets/trainee-roster.json` with a color-coded status: Absent, Didn't time out, Attended, or No trainee ID found. Report names come from the roster converted from the workbook, not Google Sheets. Placeholder roster entries are matched to attendance using exact names, matching surname tokens, or a one-character surname difference; ambiguous matches remain marked No trainee ID found.
 
 ---
 

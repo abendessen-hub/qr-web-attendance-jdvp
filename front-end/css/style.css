@@ -1582,6 +1582,24 @@ input::placeholder {
   font-size: .84rem
 }
 
+.progress-attendance-export {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0 2px
+}
+
+.progress-attendance-export .btn {
+  min-height: 43px;
+  padding: 9px 14px;
+  border-radius: 10px
+}
+
+.progress-attendance-export .hint {
+  margin: 0
+}
+
 .progress-results-bar {
   display: flex;
   align-items: center;

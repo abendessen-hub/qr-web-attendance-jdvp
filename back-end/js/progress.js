@@ -10,6 +10,7 @@ let totalPages = 1;
 let searchTimer = null;
 let loadRequestId = 0;
 const PAGE_SIZE = 50;
+const EXPORT_PAGE_SIZE = 100;
 
 const ALL_QUAL_LIST = [
   'Cookery',
@@ -41,6 +42,92 @@ function getTodayIso() {
   return y + '-' + m + '-' + d;
 }
 
+function updateAttendanceExportButton() {
+  $('btn-attendance-export').disabled = !$('filter-date').value || !$('filter-qual').value;
+}
+
+async function fetchAttendanceExportRecords(date, qualification) {
+  const params = new URLSearchParams({
+    action: 'records',
+    page: '1',
+    pageSize: String(EXPORT_PAGE_SIZE),
+    date: date,
+    filterQualification: qualification
+  });
+  const firstResponse = await fetch(CONFIG.API_URL + '?' + params.toString());
+  if (!firstResponse.ok) throw new Error('Attendance API returned HTTP ' + firstResponse.status + '.');
+  const firstData = await firstResponse.json();
+  if (firstData.status !== 'ok' || !firstData.pagination) {
+    throw new Error(firstData.message || 'Could not load attendance records for this report.');
+  }
+
+  const totalPages = firstData.pagination.totalPages;
+  if (!Number.isInteger(totalPages) || totalPages < 0) {
+    throw new Error('Attendance API returned invalid pagination data.');
+  }
+
+  const pageRequests = [];
+  for (let page = 2; page <= totalPages; page++) {
+    const pageParams = new URLSearchParams(params);
+    pageParams.set('page', String(page));
+    pageRequests.push(fetch(CONFIG.API_URL + '?' + pageParams.toString()).then(async function (response) {
+      if (!response.ok) throw new Error('Attendance API returned HTTP ' + response.status + '.');
+      const data = await response.json();
+      if (data.status !== 'ok' || !Array.isArray(data.records)) {
+        throw new Error(data.message || 'Could not load all attendance records for this report.');
+      }
+      return data.records;
+    }));
+  }
+  const additionalRecords = await Promise.all(pageRequests);
+  if (!Array.isArray(firstData.records)) {
+    throw new Error('Attendance API returned invalid attendance records.');
+  }
+  return firstData.records.concat(...additionalRecords);
+}
+
+async function downloadAttendanceCheck() {
+  const button = $('btn-attendance-export');
+  const status = $('attendance-export-status');
+  const date = $('filter-date').value;
+  const qualification = $('filter-qual').value;
+  if (!date || !qualification) {
+    status.textContent = 'Select both a date and qualification first.';
+    return;
+  }
+
+  button.disabled = true;
+  status.textContent = 'Preparing attendance report…';
+  try {
+    await configReady;
+    if (!apiReady()) throw new Error('API URL is not configured yet.');
+    const rosterResponse = await fetch('/assets/trainee-roster.json');
+    if (!rosterResponse.ok) throw new Error('Could not load the trainee roster.');
+    const roster = await rosterResponse.json();
+    if (!Array.isArray(roster)) throw new Error('The trainee roster has an invalid format.');
+    const records = await fetchAttendanceExportRecords(date, qualification);
+    const rows = AttendanceExport.buildAttendanceRows(roster, records, qualification);
+    if (!rows.length) throw new Error('No trainees were found for the selected qualification in the roster.');
+
+    const workbook = await AttendanceExport.createWorkbook(rows, JSZip);
+    const url = URL.createObjectURL(workbook);
+    const link = document.createElement('a');
+    const safeQualification = qualification.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    link.href = url;
+    link.download = 'attendance-check-' + safeQualification + '-' + date + '.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    status.textContent = 'Downloaded attendance report for ' + qualification + ' on ' + date + '.';
+  } catch (error) {
+    status.textContent = error.message || 'Could not create the attendance report.';
+    console.error('Error creating attendance check:', error);
+  } finally {
+    updateAttendanceExportButton();
+  }
+}
+
 // ─── Fetch a page of records and the all-time dashboard summaries ───
 async function loadAllData(page = currentPage) {
   const requestId = ++loadRequestId;
@@ -65,6 +152,7 @@ async function loadAllData(page = currentPage) {
         if (option.value && option.value !== assignedName) option.hidden = true;
       }
     }
+    updateAttendanceExportButton();
 
     const params = new URLSearchParams({
       action: 'records',
@@ -307,6 +395,9 @@ function renderFilteredTable(pagination) {
 // ─── Event Listeners ───
 $('filter-date').addEventListener('input', function () { loadAllData(1); });
 $('filter-qual').addEventListener('change', function () { loadAllData(1); });
+$('filter-date').addEventListener('input', updateAttendanceExportButton);
+$('filter-qual').addEventListener('change', updateAttendanceExportButton);
+$('btn-attendance-export').addEventListener('click', downloadAttendanceCheck);
 $('search-student').addEventListener('input', function () {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(function () { loadAllData(1); }, 250);

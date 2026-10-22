@@ -130,6 +130,15 @@
         </div>
       </div>
 
+      <div class="progress-attendance-export">
+        <button class="btn" id="btn-attendance-export" type="button" disabled>
+          Download attendance check (.xlsx)
+        </button>
+        <p class="hint" id="attendance-export-status" role="status">
+          Select a date and qualification above to create a roster-based attendance report.
+        </p>
+      </div>
+
       <div class="progress-results-bar">
         <span>Showing <strong id="count-shown">0</strong> of <strong id="count-filtered">0</strong> matching records</span>
         <span class="progress-results-divider" aria-hidden="true"></span>
@@ -175,6 +184,8 @@
 </footer>
 <script src="/back-end/js/authenticate.js"></script>
 <script src="/back-end/js/config.js"></script>
+<script src="/back-end/lib/jszip.min.js"></script>
+<script src="/back-end/js/attendance-export.js"></script>
 <script src="/back-end/js/progress.js"></script>
 </body>
 </html>
