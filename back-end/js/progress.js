@@ -1,4 +1,4 @@
-// Progress Dashboard Controller
+﻿// Progress Dashboard Controller
 // Dynamic calculations across all 6 JDVP qualification sheets
 
 const $ = function (id) { return document.getElementById(id); };
@@ -532,9 +532,19 @@ function updateAbsenteeAnalytics(summaryData, roster) {
   const selectedQual = $('filter-qual').value;
   const assignedQual = !CONFIG.IS_ADMIN ? QUALIFICATIONS[CONFIG.QUALIFICATION] : '';
   const targetQual = selectedQual || assignedQual;
+  const searchInput = $('search-student');
+  const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
+  // Filter roster by selected qualification and/or search query
   const applicableRoster = roster.filter(function (t) {
-    return !targetQual || t.qualification === targetQual;
+    if (targetQual && t.qualification !== targetQual) return false;
+    if (searchTerm) {
+      const matchId = t.id.toLowerCase().includes(searchTerm);
+      const matchQr = t.qrCode.toLowerCase().includes(searchTerm);
+      const matchName = t.name.toLowerCase().includes(searchTerm);
+      if (!matchId && !matchQr && !matchName) return false;
+    }
+    return true;
   });
 
   const stats = applicableRoster.map(function (t) {
@@ -559,19 +569,17 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     return b.daysAbsent - a.daysAbsent || a.name.localeCompare(b.name);
   });
 
-  rankedAbsentees = stats;
+  // Display only the top 10 students
+  const top10 = stats.slice(0, 10);
   const maxAbsent = stats.length > 0 ? stats[0].daysAbsent : 0;
-  const topStudents = stats.filter(function (s) { return s.daysAbsent === maxAbsent && maxAbsent > 0; });
 
   // Update Summary Stat Card
   const statCountEl = $('stat-most-absent-count');
   const statNameEl = $('stat-most-absent-name');
   if (statCountEl) statCountEl.textContent = maxAbsent;
   if (statNameEl) {
-    if (topStudents.length === 1) {
-      statNameEl.textContent = topStudents[0].name;
-    } else if (topStudents.length > 1) {
-      statNameEl.textContent = topStudents[0].name + ' (+' + (topStudents.length - 1) + ' tied)';
+    if (stats.length > 0 && maxAbsent > 0) {
+      statNameEl.textContent = stats[0].name;
     } else {
       statNameEl.textContent = totalSessions === 0 ? 'No sessions' : '0 absences';
     }
@@ -590,85 +598,74 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     if (badgeEl) badgeEl.textContent = 'Standby';
     contentEl.innerHTML = '<p class="hint">Absentee tracking will activate automatically once attendance records are scanned.</p>';
     if (filterBtn) filterBtn.disabled = true;
+  } else if (top10.length === 0) {
+    titleEl.textContent = 'No Trainees Found';
+    if (badgeEl) badgeEl.textContent = 'None';
+    contentEl.innerHTML = '<p class="hint">No students match your selected qualification or search criteria.</p>';
+    if (filterBtn) filterBtn.disabled = true;
   } else if (maxAbsent === 0) {
-    titleEl.textContent = '100% Perfect Attendance Across All Trainees';
+    titleEl.textContent = '100% Perfect Attendance Across Trainees';
     if (badgeEl) {
       badgeEl.textContent = 'Perfect';
       badgeEl.style.background = '#dcfce7';
       badgeEl.style.color = '#166534';
       badgeEl.style.borderColor = '#86efac';
     }
-    contentEl.innerHTML = '<p class="hint">Great news! All registered trainees have attended every recorded training session (' + totalSessions + ' session' + (totalSessions === 1 ? '' : 's') + ').</p>';
+    contentEl.innerHTML = '<p class="hint">Great news! All matching trainees attended every recorded session (' + totalSessions + ' session' + (totalSessions === 1 ? '' : 's') + ').</p>';
     if (filterBtn) filterBtn.disabled = true;
-  } else if (topStudents.length === 1) {
-    const top = topStudents[0];
-    if (badgeEl) {
-      badgeEl.textContent = 'Most Absentees';
-      badgeEl.style.background = '';
-      badgeEl.style.color = '';
-      badgeEl.style.borderColor = '';
-    }
-    titleEl.textContent = top.name;
-    contentEl.innerHTML = `
-      <div class="absentee-hero-grid">
-        <div class="absentee-hero-item">
-          <span class="hero-label">Trainee ID</span>
-          <span class="hero-val id-badge">${top.id}</span>
-        </div>
-        <div class="absentee-hero-item">
-          <span class="hero-label">QR Code #</span>
-          <span class="hero-val"><span class="badge-qr">QR: ${top.qrCode}</span></span>
-        </div>
-        <div class="absentee-hero-item">
-          <span class="hero-label">Specialization</span>
-          <span class="hero-val"><span class="badge-qual">${top.qualification}</span></span>
-        </div>
-        <div class="absentee-hero-item">
-          <span class="hero-label">Total Absences</span>
-          <span class="hero-val highlight">${top.daysAbsent} days (${top.daysAbsent} of ${top.totalSessions} sessions)</span>
-        </div>
-        <div class="absentee-hero-item">
-          <span class="hero-label">Attendance Rate</span>
-          <span class="hero-val">${top.rate}%</span>
-        </div>
-      </div>
-    `;
-    if (filterBtn) {
-      filterBtn.disabled = false;
-      filterBtn.textContent = 'Filter this Student (' + top.id + ')';
-      filterBtn.onclick = function () { filterToStudent(top.id); };
-    }
   } else {
-    // Tie
     if (badgeEl) {
-      badgeEl.textContent = 'Tied Absentees';
+      badgeEl.textContent = 'Top ' + top10.length + ' Absentees';
       badgeEl.style.background = '';
       badgeEl.style.color = '';
       badgeEl.style.borderColor = '';
     }
-    titleEl.textContent = 'Tied: ' + topStudents.length + ' Students with ' + maxAbsent + ' Absences Each';
-    let chipsHtml = '<p class="hint" style="margin-bottom:8px">Click any student below to immediately filter their attendance records:</p><div class="absentee-tie-list">';
-    topStudents.forEach(function (s) {
-      chipsHtml += '<button type="button" class="absentee-tie-chip" data-id="' + s.id + '">';
-      chipsHtml += '<span class="badge-qr">QR: ' + s.qrCode + '</span> ';
-      chipsHtml += '<span>' + s.name + ' (' + s.qualification + ')</span>';
-      chipsHtml += '</button>';
+    const filterDesc = targetQual ? ' in ' + targetQual : '';
+    const searchDesc = searchTerm ? ' matching "' + searchTerm + '"' : '';
+    titleEl.textContent = 'Top ' + top10.length + ' Students with Most Absentees' + filterDesc + searchDesc;
+
+    let tableHtml = '<div class="table-wrap top-absentees-wrap"><table class="top-absentees-table">';
+    tableHtml += '<thead><tr>';
+    tableHtml += '<th>Rank</th>';
+    tableHtml += '<th>Trainee ID</th>';
+    tableHtml += '<th>QR Code #</th>';
+    tableHtml += '<th>Name</th>';
+    tableHtml += '<th>Qualification</th>';
+    tableHtml += '<th>Days Absent</th>';
+    tableHtml += '<th>Attendance Rate</th>';
+    tableHtml += '<th>Action</th>';
+    tableHtml += '</tr></thead><tbody>';
+
+    top10.forEach(function (s, index) {
+      const rankNum = index + 1;
+      tableHtml += '<tr>';
+      tableHtml += '<td><span class="rank-badge rank-' + rankNum + '">#' + rankNum + '</span></td>';
+      tableHtml += '<td><span class="id-badge">' + s.id + '</span></td>';
+      tableHtml += '<td><span class="badge-qr">QR: ' + s.qrCode + '</span></td>';
+      tableHtml += '<td><strong>' + s.name + '</strong></td>';
+      tableHtml += '<td><span class="badge-qual">' + s.qualification + '</span></td>';
+      tableHtml += '<td><strong style="color:#b91c1c;">' + s.daysAbsent + ' days</strong> <span class="hint">(' + (s.totalSessions - s.daysAbsent) + '/' + s.totalSessions + ' sessions)</span></td>';
+      tableHtml += '<td>' + s.rate + '%</td>';
+      tableHtml += '<td><button class="btn ghost btn-sm btn-filter-student" type="button" data-id="' + s.id + '">Filter</button></td>';
+      tableHtml += '</tr>';
     });
-    chipsHtml += '</div>';
-    contentEl.innerHTML = chipsHtml;
-    contentEl.querySelectorAll('.absentee-tie-chip').forEach(function (btn) {
+
+    tableHtml += '</tbody></table></div>';
+    contentEl.innerHTML = tableHtml;
+
+    contentEl.querySelectorAll('.btn-filter-student').forEach(function (btn) {
       btn.addEventListener('click', function () {
         filterToStudent(btn.getAttribute('data-id'));
       });
     });
+
     if (filterBtn) {
       filterBtn.disabled = false;
-      filterBtn.textContent = 'Filter ' + topStudents[0].name.split(',')[0] + ' (' + topStudents[0].id + ')';
-      filterBtn.onclick = function () { filterToStudent(topStudents[0].id); };
+      filterBtn.textContent = 'Filter Top Absentee (' + top10[0].id + ')';
+      filterBtn.onclick = function () { filterToStudent(top10[0].id); };
     }
   }
 }
-
 function filterToStudent(studentId) {
   $('search-student').value = studentId;
   currentStatusFilter = 'all';

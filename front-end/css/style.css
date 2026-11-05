@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   /* Theme palette: update these values to recolor the interface. */
   --palette-white: rgb(var(--rgb-white));
   --palette-black: rgb(var(--rgb-black));
@@ -2240,31 +2240,77 @@ tbody tr:last-child td {
   color: #b91c1c;
 }
 
-.absentee-tie-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.top-absentees-wrap {
   margin-top: 10px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid var(--palette-warn-border);
+  overflow-x: auto;
 }
 
-.absentee-tie-chip {
+.top-absentees-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.top-absentees-table th {
+  background: #fef3c7;
+  color: #78350f;
+  font-weight: 700;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--palette-warn-border);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.top-absentees-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.15);
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+.top-absentees-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.top-absentees-table tbody tr:hover {
+  background: #fffbeb;
+}
+
+.rank-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 8px;
-  background: #fff;
-  border: 1px solid var(--palette-warn-border);
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: #78350f;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 12px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  background: #f1f5f9;
+  color: #475569;
 }
 
-.absentee-tie-chip:hover {
-  background: #fef3c7;
-  border-color: #f59e0b;
+.rank-badge.rank-1 {
+  background: #fef08a;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.rank-badge.rank-2 {
+  background: #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.rank-badge.rank-3 {
+  background: #fed7aa;
+  color: #9a3412;
+  border: 1px solid #fdba74;
 }
 
 /* Quick Status Filter Pills */
