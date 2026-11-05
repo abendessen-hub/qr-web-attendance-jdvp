@@ -392,3 +392,30 @@ test('searching names ignores accents and punctuation differences', () => {
     assert.equal(data.pagination.total, 1);
   }
 });
+
+test('filtering by status no-timeout returns only records without time out', () => {
+  const sheet = createSheet([
+    ['10001', 'Juan Dela Cruz', '2026-10-14', '09:00 AM', '05:00 PM'],
+    ['10002', 'Maria Santos', '2026-10-14', '09:05 AM', ''],
+    ['10003', 'Pedro Penduko', '2026-10-14', '09:10 AM', '']
+  ]);
+  const { doGet, output } = loadBackend(sheet);
+
+  doGet({
+    parameter: {
+      action: 'records',
+      status: 'no-timeout',
+      page: '1',
+      pageSize: '50'
+    }
+  });
+
+  const data = JSON.parse(output.content);
+  assert.equal(data.status, 'ok');
+  assert.deepEqual(data.records.map((r) => r.id), ['10003', '10002']);
+  assert.equal(data.pagination.total, 2);
+  assert.equal(data.summary.todayNoTimeOut, 2);
+  assert.equal(data.summary.traineeAttendanceCounts['10001'], 1);
+  assert.equal(data.summary.traineeAttendanceCounts['10002'], 1);
+  assert.equal(data.summary.traineeAttendanceCounts['10003'], 1);
+});

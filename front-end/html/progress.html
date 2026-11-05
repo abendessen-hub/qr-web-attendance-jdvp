@@ -38,6 +38,25 @@
             <span class="stat-num" id="stat-today-attendance">0</span>
           </span>
         </div>
+        <div class="stat-card stat-card-notimeout" id="card-no-timeout">
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">No Time Out Today</span>
+            <span class="stat-num" id="stat-no-timeout">0</span>
+          </span>
+        </div>
+        <div class="stat-card stat-card-warning" id="card-most-absent">
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">Most Absentees</span>
+            <span class="stat-num" id="stat-most-absent-count">0</span>
+            <span class="stat-sub" id="stat-most-absent-name">No absences yet</span>
+          </span>
+        </div>
         <div class="stat-card">
           <span class="stat-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
@@ -94,12 +113,113 @@
       </section>
     </div>
 
+    <!-- Section: Most Absentees Feature & Top Absentee Student Highlight -->
+    <section class="panel progress-panel most-absentees-section" aria-label="Student with most absentees">
+      <div class="progress-section-heading">
+        <span class="section-icon section-icon-warn" aria-hidden="true">★</span>
+        <div>
+          <h2>Student with Most Absentees</h2>
+          <p class="hint">Identifies trainee(s) with the highest recorded absences across all completed sessions.</p>
+        </div>
+      </div>
+
+      <div class="most-absentees-card" id="most-absentees-card">
+        <div class="most-absentees-header">
+          <div class="most-absentees-badge-title">
+            <span class="absentee-warning-badge" id="most-absent-badge">Top Absentee</span>
+            <h3 id="most-absent-title">Calculating…</h3>
+          </div>
+          <div class="most-absentees-actions">
+            <button class="btn ghost btn-sm" id="btn-toggle-rankings" type="button">View Absentees Leaderboard</button>
+            <button class="btn btn-sm" id="btn-filter-top-absent" type="button" disabled>Filter this Student</button>
+          </div>
+        </div>
+        <div class="most-absentees-content" id="most-absentees-content">
+          <p class="hint">Loading student absenteeism data…</p>
+        </div>
+      </div>
+
+      <!-- Collapsible Absentees Ranking Panel -->
+      <div class="absentee-ranking-panel" id="absentee-ranking-panel" hidden>
+        <div class="ranking-panel-header">
+          <div>
+            <h3>Trainee Absenteeism Leaderboard</h3>
+            <p class="hint">Students ranked by total absences from highest to lowest. Click "Filter" to inspect records.</p>
+          </div>
+          <button class="btn ghost btn-sm" id="btn-close-rankings" type="button">Close Leaderboard</button>
+        </div>
+        <div class="table-wrap ranking-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Trainee ID</th>
+                <th>QR Code #</th>
+                <th>Name</th>
+                <th>Qualification</th>
+                <th>Days Present</th>
+                <th>Days Absent</th>
+                <th>Attendance Rate</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="ranking-body">
+              <tr><td colspan="9" class="table-empty">Loading ranking…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Collapsible Student Directory & QR Badges Panel -->
+    <section class="panel progress-panel roster-directory-panel" id="roster-directory-panel" hidden>
+      <div class="roster-panel-header">
+        <div>
+          <h2>Registered Student Directory &amp; QR Code Numbers</h2>
+          <p class="hint">Search and check any student's registered name, qualification, and 4-digit QR code number.</p>
+        </div>
+        <button class="btn ghost btn-sm" id="btn-close-roster" type="button">Close Directory</button>
+      </div>
+      <div class="roster-search-bar">
+        <input id="search-roster" type="search" placeholder="Search by QR code number (e.g. 0001), Trainee ID, or name…">
+        <select id="filter-roster-qual">
+          <option value="">All Qualifications</option>
+          <option value="Cookery">Cookery</option>
+          <option value="House Keeping">House Keeping</option>
+          <option value="CSS">CSS</option>
+          <option value="EIM">EIM</option>
+          <option value="SMAW NC I">SMAW NC I</option>
+          <option value="SMAW NC II">SMAW NC II</option>
+        </select>
+        <span class="roster-count-badge" id="roster-count-badge">400 trainees</span>
+      </div>
+      <div class="table-wrap roster-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Trainee ID</th>
+              <th>QR Code #</th>
+              <th>Name</th>
+              <th>Qualification</th>
+              <th>Days Present</th>
+              <th>Days Absent</th>
+              <th>Attendance Rate</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="roster-body">
+            <tr><td colspan="8" class="table-empty">Loading directory…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel progress-panel progress-records">
       <div class="progress-section-heading">
         <span class="section-icon section-icon-alt" aria-hidden="true">03</span>
         <div>
           <h2>Daily attendance records</h2>
-          <p class="hint">Find and review individual trainee check-ins.</p>
+          <p class="hint">Filter and review trainee check-ins, absentees, and students with no time out.</p>
         </div>
       </div>
 
@@ -120,14 +240,36 @@
             <option value="SMAW NC II">SMAW NC II</option>
           </select>
         </div>
+        <div class="progress-filter-field">
+          <label for="filter-status">Status Filter</label>
+          <select id="filter-status">
+            <option value="all">All Records</option>
+            <option value="present">Present (Timed In)</option>
+            <option value="absent">Absent</option>
+            <option value="no-timeout">No Time Out</option>
+          </select>
+        </div>
         <div class="progress-filter-field progress-search-field">
-          <label for="search-student">Search Trainee ID or Name</label>
-          <input id="search-student" type="search" placeholder="Search by ID or name">
+          <label for="search-student">Search Trainee ID, QR Code, or Name</label>
+          <input id="search-student" type="search" placeholder="Search by ID, QR code (e.g. 0001), or name">
         </div>
         <div class="progress-filter-buttons">
           <button class="btn ghost" id="btn-clear" type="button">Clear filters</button>
-          <button class="btn" id="btn-refresh" type="button">Refresh records</button>
+          <button class="btn" id="btn-refresh" type="button">Refresh</button>
+          <button class="btn ghost" id="btn-view-roster" type="button" title="View all trainees with their QR code numbers">Student QR Directory</button>
         </div>
+      </div>
+
+      <!-- Quick status filter tabs / pills -->
+      <div class="filter-pills" role="tablist" aria-label="Attendance status filters">
+        <button class="filter-pill active" id="pill-all" type="button" data-status="all">All Records</button>
+        <button class="filter-pill" id="pill-present" type="button" data-status="present">Present</button>
+        <button class="filter-pill pill-absent" id="pill-absent" type="button" data-status="absent">
+          Absent <span class="pill-count" id="count-pill-absent">0</span>
+        </button>
+        <button class="filter-pill pill-no-timeout" id="pill-no-timeout" type="button" data-status="no-timeout">
+          No Time Out <span class="pill-count" id="count-pill-no-timeout">0</span>
+        </button>
       </div>
 
       <div class="progress-attendance-export">
@@ -151,11 +293,13 @@
           <thead>
             <tr>
               <th>Trainee ID</th>
+              <th>QR Code #</th>
               <th>Name</th>
               <th>Qualification</th>
               <th>Date</th>
               <th>Time In</th>
               <th>Time Out</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="records-body"></tbody>

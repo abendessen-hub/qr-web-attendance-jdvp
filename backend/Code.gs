@@ -414,13 +414,16 @@ function doGet(e) {
     const tz = ss.getSpreadsheetTimeZone();
     const parameters = (e && e.parameter) || {};
     const action = String(parameters.action || '');
+    const filterStatus = String(parameters.status || '').trim();
     const records = [];
     const matchingRecords = [];
     const traineesMap = {};
     const dateCounts = {};
     const qualificationTrainees = {};
+    const traineeAttendanceCounts = {};
     const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
     let todayAttendance = 0;
+    let todayNoTimeOut = 0;
     let totalRecords = 0;
     let recordOrder = 0;
 
@@ -482,7 +485,11 @@ function doGet(e) {
           if (action !== 'records') records.push(record);
           totalRecords++;
           dateCounts[rDate] = (dateCounts[rDate] || 0) + 1;
-          if (rDate === today) todayAttendance++;
+          if (rDate === today) {
+            todayAttendance++;
+            if (!rTimeOut) todayNoTimeOut++;
+          }
+          traineeAttendanceCounts[rId] = (traineeAttendanceCounts[rId] || 0) + 1;
           if (!qualificationTrainees[qualName]) qualificationTrainees[qualName] = {};
           qualificationTrainees[qualName][rId] = true;
 
@@ -497,7 +504,17 @@ function doGet(e) {
               searchTerms.every(function(term) {
                 return normalizedId.includes(term) || normalizedName.includes(term);
             });
-            if (matchesDate && matchesQualification && matchesSearch) {
+
+            let matchesStatus = true;
+            if (filterStatus === 'no-timeout') {
+              matchesStatus = !rTimeOut;
+            } else if (filterStatus === 'present' || filterStatus === 'attended') {
+              matchesStatus = Boolean(rTimeIn);
+            } else if (filterStatus === 'timed-out') {
+              matchesStatus = Boolean(rTimeOut);
+            }
+
+            if (matchesDate && matchesQualification && matchesSearch && matchesStatus) {
               matchingRecords.push({ record: record, order: recordOrder });
             }
           }
@@ -532,9 +549,11 @@ function doGet(e) {
         summary: {
           totalTrainees: Object.keys(traineesMap).length,
           todayAttendance: todayAttendance,
+          todayNoTimeOut: todayNoTimeOut,
           totalRecords: totalRecords,
           dateCounts: dateCounts,
-          qualificationCounts: qualificationCounts
+          qualificationCounts: qualificationCounts,
+          traineeAttendanceCounts: traineeAttendanceCounts
         }
       });
     }
@@ -546,7 +565,16 @@ function doGet(e) {
     return reply({
       status: 'ok',
       records: records,
-      trainees: trainees
+      trainees: trainees,
+      summary: {
+        totalTrainees: Object.keys(traineesMap).length,
+        todayAttendance: todayAttendance,
+        todayNoTimeOut: todayNoTimeOut,
+        totalRecords: totalRecords,
+        dateCounts: dateCounts,
+        qualificationCounts: qualificationCounts,
+        traineeAttendanceCounts: traineeAttendanceCounts
+      }
     });
   } catch (err) {
     return reply({ status: 'error', message: String(err), records: [], trainees: [] });

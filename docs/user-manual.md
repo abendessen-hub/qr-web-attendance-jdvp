@@ -121,18 +121,28 @@ If the camera is unavailable or a badge is damaged:
 ## 5. Attendance Progress Monitoring Dashboard
 Navigate to **Progress** from the main dashboard:
 
-1. **Summary Cards:** Displays live counts of Total Trainees Registered, Active Scans Today, and Total Historical Logs.
-2. **Attendance Progress by Date:**
+1. **Summary Cards:** Displays live counts of Total Trainees Registered, Active Scans Today, Total Historical Logs, **No Time Out Today**, and **Most Absentees**.
+2. **Attendance Insights & Absence Analytics:**
+   - **Student with Most Absentees Card:** Highlights the student(s) with the highest total absences across recorded session dates, showing their ID, assigned QR code number, qualification, days absent, and attendance rate. Handles ties automatically.
+   - **Absentees Leaderboard:** Expandable ranking table sorting all enrolled students from highest to lowest absences with attendance rates and quick-filter actions.
+3. **Attendance Progress by Date:**
    - Displays a dynamic history table of each date and total students recorded.
    - Shows a visual horizontal bar chart comparing attendance across days.
-3. **Qualification Progress:**
+4. **Qualification Progress:**
    - Visual progress bars comparing attendance numbers across all 6 JDVP specializations.
-4. **Daily Student Attendance Table:**
+5. **Daily Student Attendance Table:**
    - Filter records by **Date** (defaults to all/selectable dates).
    - Filter records by **Qualification** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC I`, `SMAW NC II`).
-   - Search records in real-time by **Trainee ID** or **Student Name**.
+   - Filter records by **Status**:
+     - **All Records**: View all attendance logs.
+     - **Present**: Only students who recorded attendance on the selected date.
+     - **Absent**: Cross-references the active date's log against the full master roster to show who missed that day.
+     - **No Time Out**: Filters trainees who scanned Time In but have not recorded a Time Out yet.
+   - **Quick Filter Pills**: One-click pills above the table with live badges for *All Records*, *Present*, *Absent*, and *No Time Out*.
+   - **Student QR Directory**: Click **Student QR Directory** to open a searchable directory of all 400 trainees with their 4-digit QR code numbers and qualifications.
+   - **Table Columns**: View Trainee ID, QR Code #, Name, Qualification, Date, Time In, Time Out, and Color-Coded Status (`Present`, `No Time Out`, `Absent`).
+   - Search records in real-time by **Trainee ID**, **QR Code #**, or **Student Name**.
    - Browse matching attendance history 50 records at a time; summary cards and charts continue to cover the full available history.
-   - View exact `Time In` and `Time Out` timestamps for each student.
    - Click **Refresh** to sync with Google Sheets.
    - Select both a date and qualification, then click **Download attendance check (.xlsx)** to export every trainee from `assets/trainee-roster.json` with a color-coded status: Absent, Didn't time out, Attended, or No trainee ID found. Report names come from the roster converted from the workbook, not Google Sheets. Placeholder roster entries are matched to attendance using exact names, matching surname tokens, or a one-character surname difference; ambiguous matches remain marked No trainee ID found.
 
