@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   /* Theme palette: update these values to recolor the interface. */
   --palette-white: rgb(var(--rgb-white));
   --palette-black: rgb(var(--rgb-black));
@@ -2198,6 +2198,28 @@ tbody tr:last-child td {
   padding: 6px 14px !important;
   font-size: 0.82rem !important;
   border-radius: 8px !important;
+}
+
+.btn-excel {
+  background: #107c41 !important;
+  color: #ffffff !important;
+  border: 1px solid #0d6535 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(16, 124, 65, 0.2);
+}
+
+.btn-excel:hover {
+  background: #0b5c30 !important;
+  border-color: #084323 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(16, 124, 65, 0.32) !important;
+}
+
+.btn-excel svg {
+  flex-shrink: 0;
 }
 
 .absentee-filter-bar {

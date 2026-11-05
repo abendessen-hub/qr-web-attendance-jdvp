@@ -1,4 +1,4 @@
-﻿// Progress Dashboard Controller
+// Progress Dashboard Controller
 // Dynamic calculations across all 6 JDVP qualification sheets
 
 const $ = function (id) { return document.getElementById(id); };
@@ -12,6 +12,7 @@ let loadRequestId = 0;
 let masterRoster = [];
 let currentStatusFilter = 'all'; // 'all', 'present', 'absent', 'no-timeout'
 let rankedAbsentees = [];
+let lastAbsenteeReportData = null; // Holds data for Excel report download
 
 const PAGE_SIZE = 50;
 const EXPORT_PAGE_SIZE = 100;
@@ -757,6 +758,78 @@ function updateAbsenteeAnalytics(summaryData, roster) {
       });
     });
   }
+
+  // Store computed data for Excel download (always update, even when 0 absentees)
+  var totalAbsentDays = absenteesOnly.reduce(function (sum, s) { return sum + s.daysAbsent; }, 0);
+  var nowStr = new Date().toLocaleString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+  var dateDisplayStr = isSpecificDate
+    ? formatDateDisplay(dateRange)
+    : 'All Time (' + totalSessions + ' Sessions)';
+
+  // Build per-qualification summary from absenteesOnly (uses full absentees not just displayed slice)
+  var qualSummaries = {};
+  applicableRoster.forEach(function (t) {
+    if (!qualSummaries[t.qualification]) {
+      qualSummaries[t.qualification] = { enrolled: 0, withAbsences: 0, perfectAttendance: 0, totalAbsentDays: 0 };
+    }
+    qualSummaries[t.qualification].enrolled++;
+  });
+  absenteesOnly.forEach(function (s) {
+    if (!qualSummaries[s.qualification]) return;
+    qualSummaries[s.qualification].withAbsences++;
+    qualSummaries[s.qualification].totalAbsentDays += s.daysAbsent;
+  });
+  applicableRoster.forEach(function (t) {
+    if (!qualSummaries[t.qualification]) return;
+    var found = absenteesOnly.some(function (s) { return s.id === t.id; });
+    if (!found) qualSummaries[t.qualification].perfectAttendance++;
+  });
+
+  var qualSummaryList = Object.keys(qualSummaries).sort().map(function (q) {
+    var qs = qualSummaries[q];
+    var totalPossible = qs.enrolled * totalSessions;
+    var totalAbsent = qs.totalAbsentDays;
+    var attendRate = totalPossible > 0
+      ? Math.round(Math.max(0, (1 - totalAbsent / totalPossible) * 100))
+      : 100;
+    return {
+      qualification: q,
+      enrolled: qs.enrolled,
+      withAbsences: qs.withAbsences,
+      perfectAttendance: qs.perfectAttendance,
+      totalAbsentDays: qs.totalAbsentDays,
+      attendanceRate: attendRate
+    };
+  });
+
+  // Add remarks to each absentee for the Excel
+  var absenteesWithRemarks = absenteesOnly.map(function (s) {
+    var remarks = '';
+    if (s.rate < 50 || s.daysAbsent >= 5) {
+      remarks = 'CRITICAL — Immediate intervention required';
+    } else if (s.rate < 75 || s.daysAbsent >= 3) {
+      remarks = 'AT RISK — Counseling recommended';
+    } else {
+      remarks = 'MONITOR — Below perfect attendance';
+    }
+    return Object.assign({}, s, { remarks: remarks });
+  });
+
+  lastAbsenteeReportData = {
+    qualification: finalQual || 'All Qualifications',
+    dateDisplay: dateDisplayStr,
+    searchTerm: searchTerm || '',
+    totalEnrolled: applicableRoster.length,
+    totalSessions: totalSessions,
+    totalAbsentees: absenteesOnly.length,
+    totalAbsentDays: totalAbsentDays,
+    generatedAt: nowStr,
+    absentees: absenteesWithRemarks,
+    qualificationSummaries: qualSummaryList
+  };
 }
 function filterToStudent(studentId) {
   $('search-student').value = studentId;
