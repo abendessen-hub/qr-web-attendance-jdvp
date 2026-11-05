@@ -1,4 +1,4 @@
-// Progress Dashboard Controller
+﻿// Progress Dashboard Controller
 // Dynamic calculations across all 6 JDVP qualification sheets
 
 const $ = function (id) { return document.getElementById(id); };
@@ -609,8 +609,10 @@ function updateAbsenteeAnalytics(summaryData, roster) {
   const searchInput = $('absentee-search-student');
   const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-  const limitSelect = $('absentee-limit-select');
-  const limitVal = limitSelect ? limitSelect.value : '10';
+  // Fix 1: Number input + Show All support
+  const limitInput = $('absentee-limit-input');
+  const limitVal = limitInput ? limitInput.value.trim() : '';
+  const limitNum = limitVal ? parseInt(limitVal, 10) : null;
 
   // Filter roster by qualification and search
   const applicableRoster = roster.filter(function (t) {
@@ -668,19 +670,26 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     return b.daysAbsent - a.daysAbsent || a.name.localeCompare(b.name);
   });
 
-  const displayedStudents = (limitVal === 'all')
-    ? stats
-    : stats.slice(0, parseInt(limitVal, 10) || 10);
+  // Fix 4: ONLY show students who have an absence record (daysAbsent > 0).
+  // Students who are NOT absent (0 days absent) will NEVER be shown on absentees!
+  const absenteesOnly = stats.filter(function (s) {
+    return s.daysAbsent > 0;
+  });
 
-  const maxAbsent = stats.length > 0 ? stats[0].daysAbsent : 0;
+  // Fix 1: Slice by user-entered count or show all
+  const displayedStudents = (limitNum && limitNum > 0)
+    ? absenteesOnly.slice(0, limitNum)
+    : absenteesOnly;
+
+  const maxAbsent = absenteesOnly.length > 0 ? absenteesOnly[0].daysAbsent : 0;
 
   // Update Summary Stat Card
   const statCountEl = $('stat-most-absent-count');
   const statNameEl = $('stat-most-absent-name');
   if (statCountEl) statCountEl.textContent = maxAbsent;
   if (statNameEl) {
-    if (stats.length > 0 && maxAbsent > 0) {
-      statNameEl.textContent = stats[0].name;
+    if (absenteesOnly.length > 0 && maxAbsent > 0) {
+      statNameEl.textContent = absenteesOnly[0].name;
     } else {
       statNameEl.textContent = totalSessions === 0 ? 'No sessions' : '0 absences';
     }
@@ -689,43 +698,29 @@ function updateAbsenteeAnalytics(summaryData, roster) {
   // Update Highlight Banner
   const titleEl = $('most-absent-title');
   const contentEl = $('most-absentees-content');
-  const filterBtn = $('btn-filter-top-absent');
   const badgeEl = $('most-absent-badge');
 
   if (!titleEl || !contentEl) return;
 
+  // Fix 3: Badge ALWAYS says "Absentees" only (do not show how many students in the badge)
+  if (badgeEl) {
+    badgeEl.textContent = 'Absentees';
+    badgeEl.style.background = '';
+    badgeEl.style.color = '';
+    badgeEl.style.borderColor = '';
+  }
+
   if (totalSessions === 0) {
     titleEl.textContent = 'No Attendance Sessions Recorded Yet';
-    if (badgeEl) badgeEl.textContent = 'Standby';
     contentEl.innerHTML = '<p class="hint">Absentee tracking will activate automatically once attendance records are scanned.</p>';
-    if (filterBtn) filterBtn.disabled = true;
-  } else if (displayedStudents.length === 0) {
-    titleEl.textContent = 'No Trainees Found';
-    if (badgeEl) badgeEl.textContent = 'None';
-    contentEl.innerHTML = '<p class="hint">No students match your selected qualification, date, or search criteria.</p>';
-    if (filterBtn) filterBtn.disabled = true;
-  } else if (maxAbsent === 0) {
-    titleEl.textContent = '100% Perfect Attendance Across Trainees';
-    if (badgeEl) {
-      badgeEl.textContent = 'Perfect';
-      badgeEl.style.background = '#dcfce7';
-      badgeEl.style.color = '#166534';
-      badgeEl.style.borderColor = '#86efac';
-    }
-    contentEl.innerHTML = '<p class="hint">Great news! All matching trainees attended every session (' + totalSessions + ' session' + (totalSessions === 1 ? '' : 's') + ').</p>';
-    if (filterBtn) filterBtn.disabled = true;
+  } else if (absenteesOnly.length === 0) {
+    titleEl.textContent = 'No Students are Absent';
+    contentEl.innerHTML = '<p class="hint">Great news! None of the matching trainees have an absence record for the selected criteria (100% attendance).</p>';
   } else {
-    if (badgeEl) {
-      badgeEl.textContent = displayedStudents.length + ' Students';
-      badgeEl.style.background = '';
-      badgeEl.style.color = '';
-      badgeEl.style.borderColor = '';
-    }
     const filterDesc = finalQual ? ' in ' + finalQual : '';
     const searchDesc = searchTerm ? ' matching "' + searchTerm + '"' : '';
     const dateDesc = isSpecificDate ? ' on ' + formatDateDisplay(dateRange) : ' across ' + totalSessions + ' Sessions';
-    const limitDesc = (limitVal === 'all') ? 'All ' + displayedStudents.length + ' Trainees' : 'Top ' + displayedStudents.length + ' Students';
-    titleEl.textContent = limitDesc + ' Ranked by Absences' + filterDesc + dateDesc + searchDesc;
+    titleEl.textContent = 'Student Absentees' + filterDesc + dateDesc + searchDesc;
 
     let tableHtml = '<div class="table-wrap top-absentees-wrap"><table class="top-absentees-table">';
     tableHtml += '<thead><tr>';
@@ -761,12 +756,6 @@ function updateAbsenteeAnalytics(summaryData, roster) {
         filterToStudent(btn.getAttribute('data-id'));
       });
     });
-
-    if (filterBtn) {
-      filterBtn.disabled = false;
-      filterBtn.textContent = 'Filter Top Absentee (' + displayedStudents[0].id + ')';
-      filterBtn.onclick = function () { filterToStudent(displayedStudents[0].id); };
-    }
   }
 }
 function filterToStudent(studentId) {
@@ -956,6 +945,14 @@ $('btn-clear').addEventListener('click', function () {
 });
 
 // ─── Absentee Tracker Filter Listeners ───
+// Fix 2: Refresh button
+const btnRefreshAbsentees = $('btn-refresh-absentees');
+if (btnRefreshAbsentees) {
+  btnRefreshAbsentees.addEventListener('click', function () {
+    loadAllData(currentPage);
+  });
+}
+
 const absenteeQualSelect = $('absentee-filter-qual');
 if (absenteeQualSelect) {
   absenteeQualSelect.addEventListener('change', function () {
@@ -986,9 +983,18 @@ if (absenteeSearchInput) {
   });
 }
 
-const absenteeLimitSelect = $('absentee-limit-select');
-if (absenteeLimitSelect) {
-  absenteeLimitSelect.addEventListener('change', function () {
+// Fix 1: Number input + Show All button
+const absenteeLimitInput = $('absentee-limit-input');
+if (absenteeLimitInput) {
+  absenteeLimitInput.addEventListener('input', function () {
+    updateAbsenteeAnalytics(summary, masterRoster);
+  });
+}
+
+const btnShowAllAbsentees = $('btn-show-all-absentees');
+if (btnShowAllAbsentees) {
+  btnShowAllAbsentees.addEventListener('click', function () {
+    if ($('absentee-limit-input')) $('absentee-limit-input').value = '';
     updateAbsenteeAnalytics(summary, masterRoster);
   });
 }
@@ -999,10 +1005,9 @@ if (btnResetAbsentee) {
     if ($('absentee-filter-qual') && CONFIG.IS_ADMIN) $('absentee-filter-qual').value = '';
     if ($('absentee-filter-date')) $('absentee-filter-date').value = 'all';
     if ($('absentee-search-student')) $('absentee-search-student').value = '';
-    if ($('absentee-limit-select')) $('absentee-limit-select').value = '10';
+    if ($('absentee-limit-input')) $('absentee-limit-input').value = '10';
     updateAbsenteeAnalytics(summary, masterRoster);
   });
 }
-
 // Initial load
 loadAllData();

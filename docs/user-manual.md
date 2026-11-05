@@ -128,7 +128,8 @@ Navigate to **Progress** from the main dashboard:
      - Filter by **Qualification** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC I`, `SMAW NC II`).
      - Filter by **Time Range / Date**: Choose **All Time (All Recorded Sessions)** or select any specific session date.
      - Search in real-time by **Student Name, Trainee ID, or QR Code #**.
-     - Choose how many students to display: **Top 10**, **Top 25**, **Top 50**, **Top 100**, or **Show All**.
+     - Choose how many students to display by entering any number, or click **Show All** to display all absentees. Only trainees with an absence record (`daysAbsent > 0`) are listed.
+     - Click **Refresh** to instantly re-sync and recalculate absentee statistics.
    - Includes quick **Filter** buttons to inspect any student's individual records in the main attendance table.
 3. **Attendance Progress by Date:**
    - Displays a dynamic history table of each date and total students recorded.

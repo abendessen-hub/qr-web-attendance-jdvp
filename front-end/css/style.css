@@ -2243,7 +2243,25 @@ tbody tr:last-child td {
 }
 
 .absentee-limit-field {
-  flex: 0 1 130px;
+  flex: 0 1 180px;
+}
+
+.absentee-limit-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.absentee-limit-group input {
+  min-width: 60px;
+  flex: 1 1 auto;
+}
+
+.absentee-limit-group .btn {
+  white-space: nowrap;
+  min-height: 40px !important;
+  padding: 6px 12px !important;
+  font-size: 0.8rem !important;
 }
 
 .absentee-filter-actions {

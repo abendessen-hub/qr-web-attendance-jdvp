@@ -130,7 +130,7 @@
             <h3 id="most-absent-title">Calculating...</h3>
           </div>
           <div class="most-absentees-actions">
-            <button class="btn btn-sm" id="btn-filter-top-absent" type="button" disabled>Filter Top Absentee</button>
+            <button class="btn btn-sm" id="btn-refresh-absentees" type="button">Refresh</button>
           </div>
         </div>
 
@@ -162,14 +162,11 @@
           </div>
 
           <div class="absentee-filter-field absentee-limit-field">
-            <label for="absentee-limit-select">Show Students</label>
-            <select id="absentee-limit-select">
-              <option value="10" selected>Top 10</option>
-              <option value="25">Top 25</option>
-              <option value="50">Top 50</option>
-              <option value="100">Top 100</option>
-              <option value="all">Show All</option>
-            </select>
+            <label for="absentee-limit-input">Show Students</label>
+            <div class="absentee-limit-group">
+              <input id="absentee-limit-input" type="number" min="1" placeholder="All" value="10">
+              <button class="btn ghost btn-sm" id="btn-show-all-absentees" type="button">Show All</button>
+            </div>
           </div>
 
           <div class="absentee-filter-actions">
