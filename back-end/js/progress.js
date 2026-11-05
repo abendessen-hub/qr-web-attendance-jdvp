@@ -1133,5 +1133,14 @@ if (btnResetAbsentee) {
     updateAbsenteeAnalytics(summary, masterRoster);
   });
 }
+
+// Download Excel Report button
+const btnDownloadReport = $('btn-download-absentee-report');
+if (btnDownloadReport) {
+  btnDownloadReport.addEventListener('click', function () {
+    downloadAbsenteeReport();
+  });
+}
+
 // Initial load
 loadAllData();
