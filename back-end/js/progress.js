@@ -1,4 +1,4 @@
-﻿// Progress Dashboard Controller
+// Progress Dashboard Controller
 // Dynamic calculations across all 6 JDVP qualification sheets
 
 const $ = function (id) { return document.getElementById(id); };
@@ -87,16 +87,15 @@ async function loadMasterRoster() {
   return masterRoster;
 }
 
-async function fetchAttendanceExportRecords(date, qualification) {
+async function fetchAttendanceExportRecords(date, qualification, search) {
   const params = new URLSearchParams({
     action: 'records',
     page: '1',
-    pageSize: String(EXPORT_PAGE_SIZE),
-    date: date
+    pageSize: String(EXPORT_PAGE_SIZE)
   });
-  if (qualification) {
-    params.set('filterQualification', qualification);
-  }
+  if (date) params.set('date', date);
+  if (qualification) params.set('filterQualification', qualification);
+  if (search) params.set('search', search);
 
   const firstResponse = await fetch(CONFIG.API_URL + '?' + params.toString());
   if (!firstResponse.ok) throw new Error('Attendance API returned HTTP ' + firstResponse.status + '.');
@@ -263,90 +262,105 @@ async function loadAllData(page = currentPage) {
 
 // ─── Absent Filter Controller ───
 async function handleAbsentFilter(page, date, qualification, search, requestId) {
-  // If no date is chosen, pick the most recent date from summary or today
-  if (!date) {
-    if (summary && summary.dateCounts && Object.keys(summary.dateCounts).length > 0) {
-      const dates = Object.keys(summary.dateCounts).sort();
-      date = dates[dates.length - 1];
-    } else {
-      date = getTodayIso();
-    }
-    $('filter-date').value = date;
-    updateAttendanceExportButton();
-  }
-
-  // 1. Fetch attendance records for this date
-  const records = await fetchAttendanceExportRecords(date, qualification);
-  if (requestId !== loadRequestId) return;
-
-  // 2. Filter master roster by qualification or search
   const targetQual = qualification || (!CONFIG.IS_ADMIN ? QUALIFICATIONS[CONFIG.QUALIFICATION] : '');
+  const allRecordedDates = summary && summary.dateCounts ? Object.keys(summary.dateCounts).sort() : [];
 
-  // Do not dump all 400 names across all qualifications if neither a qualification nor a search term is specified
-  if (!targetQual && !search) {
-    currentRecords = [];
-    currentPage = 1;
-    totalPages = 1;
-    $('records-body').replaceChildren();
-    $('table-message').textContent = 'Please pick a qualification or search by student name/ID to view absent students.';
-    $('table-message').hidden = false;
-    renderSummaryCards(summary || { totalTrainees: masterRoster.length, todayAttendance: 0, totalRecords: 0 });
-    if (summary) {
-      renderDailyHistoryAndChart(summary.dateCounts || {});
-      renderQualificationProgress(summary.qualificationCounts || {});
-      updateAbsenteeAnalytics(summary, masterRoster);
-      updateFilterPills(summary, 0);
-    }
-    renderFilteredTable({ page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 1 });
-    return;
-  }
-
-  const rosterForQual = masterRoster.filter(function (t) {
-    return !targetQual || t.qualification === targetQual;
-  });
-
-  // 3. Match who attended vs who is absent
   let absentList = [];
-  try {
-    if (targetQual && AttendanceExport && typeof AttendanceExport.buildAttendanceRows === 'function') {
-      const rows = AttendanceExport.buildAttendanceRows(masterRoster, records, targetQual);
-      absentList = rows.filter(function (r) { return r.status === 'Absent'; }).map(function (r) {
-        return {
-          id: r.id,
-          name: r.name,
-          qualification: targetQual,
-          date: date,
-          timeIn: '—',
-          timeOut: '—',
-          status: 'absent'
-        };
-      });
-    } else {
-      const attendedIds = new Set(records.map(function (r) { return String(r.id || '').trim(); }));
-      absentList = rosterForQual.filter(function (t) {
-        return !attendedIds.has(t.id);
-      }).map(function (t) {
-        return {
-          id: t.id,
-          name: t.name,
-          qualification: t.qualification,
-          date: date,
-          timeIn: '—',
-          timeOut: '—',
-          status: 'absent'
-        };
-      });
-    }
-  } catch (_) {
+  let effectiveDate = date;
+
+  if (effectiveDate) {
+    // 1. Fetch attendance records for this date
+    const records = await fetchAttendanceExportRecords(effectiveDate, targetQual, search);
+    if (requestId !== loadRequestId) return;
+
+    // 2. Filter master roster by qualification and search
+    const rosterForFilter = masterRoster.filter(function (t) {
+      if (targetQual && t.qualification !== targetQual) return false;
+      if (search) {
+        const term = search.toLowerCase();
+        const matchId = t.id.toLowerCase().includes(term);
+        const matchQr = t.qrCode.toLowerCase().includes(term);
+        const matchName = t.name.toLowerCase().includes(term);
+        if (!matchId && !matchQr && !matchName) return false;
+      }
+      return true;
+    });
+
+    // 3. Match who attended vs who is absent
     const attendedIds = new Set(records.map(function (r) { return String(r.id || '').trim(); }));
-    absentList = rosterForQual.filter(function (t) {
+    absentList = rosterForFilter.filter(function (t) {
       return !attendedIds.has(t.id);
     }).map(function (t) {
       return {
         id: t.id,
         name: t.name,
         qualification: t.qualification,
-        date: date,
+        date: effectiveDate,
+        timeIn: '—',
+        timeOut: '—',
+        status: 'absent'
+      };
+    });
+  } else if (search) {
+    // Search with no specific date: show the session dates that matching student(s) missed
+    const matchingStudents = masterRoster.filter(function (t) {
+      if (targetQual && t.qualification !== targetQual) return false;
+      const term = search.toLowerCase();
+      return t.id.toLowerCase().includes(term) ||
+             t.qrCode.toLowerCase().includes(term) ||
+             t.name.toLowerCase().includes(term);
+    });
+
+    if (matchingStudents.length > 0) {
+      const records = await fetchAttendanceExportRecords('', targetQual, search);
+      if (requestId !== loadRequestId) return;
+
+      const attendedDatesByStudent = {};
+      records.forEach(function (r) {
+        const id = String(r.id || '').trim();
+        if (!attendedDatesByStudent[id]) attendedDatesByStudent[id] = new Set();
+        if (r.date) attendedDatesByStudent[id].add(r.date);
+      });
+
+      matchingStudents.forEach(function (student) {
+        const attendedDates = attendedDatesByStudent[student.id] || new Set();
+        allRecordedDates.slice().reverse().forEach(function (sessionDate) {
+          if (!attendedDates.has(sessionDate)) {
+            absentList.push({
+              id: student.id,
+              name: student.name,
+              qualification: student.qualification,
+              date: sessionDate,
+              timeIn: '—',
+              timeOut: '—',
+              status: 'absent'
+            });
+          }
+        });
+      });
+    }
+  } else {
+    // No date and no search: default to latest recorded session date or today
+    effectiveDate = allRecordedDates.length > 0 ? allRecordedDates[allRecordedDates.length - 1] : getTodayIso();
+    $('filter-date').value = effectiveDate;
+    updateAttendanceExportButton();
+
+    const records = await fetchAttendanceExportRecords(effectiveDate, targetQual, '');
+    if (requestId !== loadRequestId) return;
+
+    const rosterForFilter = masterRoster.filter(function (t) {
+      return !targetQual || t.qualification === targetQual;
+    });
+
+    const attendedIds = new Set(records.map(function (r) { return String(r.id || '').trim(); }));
+    absentList = rosterForFilter.filter(function (t) {
+      return !attendedIds.has(t.id);
+    }).map(function (t) {
+      return {
+        id: t.id,
+        name: t.name,
+        qualification: t.qualification,
+        date: effectiveDate,
         timeIn: '—',
         timeOut: '—',
         status: 'absent'
@@ -354,18 +368,7 @@ async function handleAbsentFilter(page, date, qualification, search, requestId) 
     });
   }
 
-  // 4. Apply search filter
-  if (search) {
-    const term = search.toLowerCase();
-    absentList = absentList.filter(function (r) {
-      const qr = getQrCode(r.id).toLowerCase();
-      const id = String(r.id || '').toLowerCase();
-      const name = String(r.name || '').toLowerCase();
-      return id.includes(term) || qr.includes(term) || name.includes(term);
-    });
-  }
-
-  // 5. Paginate absent records
+  // 4. Paginate absent records
   const total = absentList.length;
   const computedTotalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const safePage = Math.min(Math.max(page, 1), computedTotalPages);
@@ -390,7 +393,6 @@ async function handleAbsentFilter(page, date, qualification, search, requestId) 
   }
   renderFilteredTable(pagination);
 }
-
 // ─── Summary Stat Cards ───
 function renderSummaryCards(data) {
   if (!data) return;
@@ -525,19 +527,94 @@ function renderQualificationProgress(qualCounts) {
 }
 
 // ─── Feature: Student with Most Absentees Analytics ───
+function cleanNameForLookup(name) {
+  return String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const absenteeDateAttendedCache = {};
+
+function populateAbsenteeDateDropdown(dates, dateCounts) {
+  const dateSelect = $('absentee-filter-date');
+  if (!dateSelect) return;
+  const currentVal = dateSelect.value || 'all';
+
+  const existingOptions = Array.from(dateSelect.options).map(function (o) { return o.value; });
+  const newValues = ['all'].concat(dates);
+  if (existingOptions.join(',') === newValues.join(',')) return;
+
+  dateSelect.replaceChildren();
+  const allOpt = document.createElement('option');
+  allOpt.value = 'all';
+  allOpt.textContent = 'All Time (' + dates.length + ' Recorded Sessions)';
+  dateSelect.appendChild(allOpt);
+
+  dates.slice().reverse().forEach(function (d) {
+    const opt = document.createElement('option');
+    opt.value = d;
+    const count = dateCounts[d] || 0;
+    opt.textContent = formatDateDisplay(d) + ' (' + count + ' students)';
+    dateSelect.appendChild(opt);
+  });
+
+  if (newValues.includes(currentVal)) {
+    dateSelect.value = currentVal;
+  }
+}
+
+async function loadDateForAbsenteeAnalytics(dateRange) {
+  if (absenteeDateAttendedCache[dateRange]) {
+    updateAbsenteeAnalytics(summary, masterRoster);
+    return;
+  }
+  const titleEl = $('most-absent-title');
+  if (titleEl) titleEl.textContent = 'Loading records for ' + formatDateDisplay(dateRange) + '...';
+  try {
+    const records = await fetchAttendanceExportRecords(dateRange, '', '');
+    const attendedSet = new Set();
+    records.forEach(function (r) {
+      if (r.id) attendedSet.add(String(r.id).trim());
+      if (r.name) attendedSet.add(cleanNameForLookup(r.name));
+    });
+    absenteeDateAttendedCache[dateRange] = attendedSet;
+  } catch (err) {
+    console.error('Could not load date records for absentee analytics:', err);
+  }
+  updateAbsenteeAnalytics(summary, masterRoster);
+}
+
 function updateAbsenteeAnalytics(summaryData, roster) {
   if (!summaryData) return;
-  const dates = Object.keys(summaryData.dateCounts || {}).sort();
-  const totalSessions = dates.length;
-  const selectedQual = $('filter-qual').value;
+  const allDates = Object.keys(summaryData.dateCounts || {}).sort();
+  populateAbsenteeDateDropdown(allDates, summaryData.dateCounts || {});
+
+  const qualSelect = $('absentee-filter-qual');
+  const targetQual = qualSelect ? qualSelect.value : '';
   const assignedQual = !CONFIG.IS_ADMIN ? QUALIFICATIONS[CONFIG.QUALIFICATION] : '';
-  const targetQual = selectedQual || assignedQual;
-  const searchInput = $('search-student');
+  const finalQual = targetQual || assignedQual;
+
+  if (qualSelect && !CONFIG.IS_ADMIN) {
+    qualSelect.value = assignedQual;
+    qualSelect.disabled = true;
+  }
+
+  const dateSelect = $('absentee-filter-date');
+  const dateRange = dateSelect ? dateSelect.value : 'all';
+
+  const searchInput = $('absentee-search-student');
   const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-  // Filter roster by selected qualification and/or search query
+  const limitSelect = $('absentee-limit-select');
+  const limitVal = limitSelect ? limitSelect.value : '10';
+
+  // Filter roster by qualification and search
   const applicableRoster = roster.filter(function (t) {
-    if (targetQual && t.qualification !== targetQual) return false;
+    if (finalQual && t.qualification !== finalQual) return false;
     if (searchTerm) {
       const matchId = t.id.toLowerCase().includes(searchTerm);
       const matchQr = t.qrCode.toLowerCase().includes(searchTerm);
@@ -547,12 +624,33 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     return true;
   });
 
+  const isSpecificDate = dateRange !== 'all';
+  const totalSessions = isSpecificDate ? 1 : allDates.length;
+  const attendedSet = isSpecificDate ? (absenteeDateAttendedCache[dateRange] || new Set()) : null;
+
   const stats = applicableRoster.map(function (t) {
-    const daysPresent = (summaryData.traineeAttendanceCounts && summaryData.traineeAttendanceCounts[t.id])
-      ? summaryData.traineeAttendanceCounts[t.id]
-      : 0;
-    const daysAbsent = Math.max(0, totalSessions - daysPresent);
-    const rate = totalSessions > 0 ? Math.round((daysPresent / totalSessions) * 100) : 100;
+    let daysPresent = 0;
+    let daysAbsent = 0;
+    let rate = 100;
+    let detailStr = '';
+
+    if (isSpecificDate) {
+      const norm = cleanNameForLookup(t.name);
+      const wasPresent = attendedSet ? (attendedSet.has(t.id) || attendedSet.has(norm)) : false;
+      daysPresent = wasPresent ? 1 : 0;
+      daysAbsent = wasPresent ? 0 : 1;
+      rate = wasPresent ? 100 : 0;
+      detailStr = wasPresent ? 'Attended (1/1 session)' : 'Absent (0/1 session)';
+    } else {
+      const norm = cleanNameForLookup(t.name);
+      daysPresent = (summaryData.traineeAttendanceCounts && (summaryData.traineeAttendanceCounts[t.id] || summaryData.traineeAttendanceCounts[norm]))
+        ? (summaryData.traineeAttendanceCounts[t.id] || summaryData.traineeAttendanceCounts[norm])
+        : 0;
+      daysAbsent = Math.max(0, totalSessions - daysPresent);
+      rate = totalSessions > 0 ? Math.round((daysPresent / totalSessions) * 100) : 100;
+      detailStr = daysAbsent + ' days (' + daysPresent + '/' + totalSessions + ' sessions)';
+    }
+
     return {
       id: t.id,
       qrCode: t.qrCode,
@@ -561,7 +659,8 @@ function updateAbsenteeAnalytics(summaryData, roster) {
       daysPresent: daysPresent,
       daysAbsent: daysAbsent,
       totalSessions: totalSessions,
-      rate: rate
+      rate: rate,
+      detailStr: detailStr
     };
   });
 
@@ -569,8 +668,10 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     return b.daysAbsent - a.daysAbsent || a.name.localeCompare(b.name);
   });
 
-  // Display only the top 10 students
-  const top10 = stats.slice(0, 10);
+  const displayedStudents = (limitVal === 'all')
+    ? stats
+    : stats.slice(0, parseInt(limitVal, 10) || 10);
+
   const maxAbsent = stats.length > 0 ? stats[0].daysAbsent : 0;
 
   // Update Summary Stat Card
@@ -598,10 +699,10 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     if (badgeEl) badgeEl.textContent = 'Standby';
     contentEl.innerHTML = '<p class="hint">Absentee tracking will activate automatically once attendance records are scanned.</p>';
     if (filterBtn) filterBtn.disabled = true;
-  } else if (top10.length === 0) {
+  } else if (displayedStudents.length === 0) {
     titleEl.textContent = 'No Trainees Found';
     if (badgeEl) badgeEl.textContent = 'None';
-    contentEl.innerHTML = '<p class="hint">No students match your selected qualification or search criteria.</p>';
+    contentEl.innerHTML = '<p class="hint">No students match your selected qualification, date, or search criteria.</p>';
     if (filterBtn) filterBtn.disabled = true;
   } else if (maxAbsent === 0) {
     titleEl.textContent = '100% Perfect Attendance Across Trainees';
@@ -611,18 +712,20 @@ function updateAbsenteeAnalytics(summaryData, roster) {
       badgeEl.style.color = '#166534';
       badgeEl.style.borderColor = '#86efac';
     }
-    contentEl.innerHTML = '<p class="hint">Great news! All matching trainees attended every recorded session (' + totalSessions + ' session' + (totalSessions === 1 ? '' : 's') + ').</p>';
+    contentEl.innerHTML = '<p class="hint">Great news! All matching trainees attended every session (' + totalSessions + ' session' + (totalSessions === 1 ? '' : 's') + ').</p>';
     if (filterBtn) filterBtn.disabled = true;
   } else {
     if (badgeEl) {
-      badgeEl.textContent = 'Top ' + top10.length + ' Absentees';
+      badgeEl.textContent = displayedStudents.length + ' Students';
       badgeEl.style.background = '';
       badgeEl.style.color = '';
       badgeEl.style.borderColor = '';
     }
-    const filterDesc = targetQual ? ' in ' + targetQual : '';
+    const filterDesc = finalQual ? ' in ' + finalQual : '';
     const searchDesc = searchTerm ? ' matching "' + searchTerm + '"' : '';
-    titleEl.textContent = 'Top ' + top10.length + ' Students with Most Absentees' + filterDesc + searchDesc;
+    const dateDesc = isSpecificDate ? ' on ' + formatDateDisplay(dateRange) : ' across ' + totalSessions + ' Sessions';
+    const limitDesc = (limitVal === 'all') ? 'All ' + displayedStudents.length + ' Trainees' : 'Top ' + displayedStudents.length + ' Students';
+    titleEl.textContent = limitDesc + ' Ranked by Absences' + filterDesc + dateDesc + searchDesc;
 
     let tableHtml = '<div class="table-wrap top-absentees-wrap"><table class="top-absentees-table">';
     tableHtml += '<thead><tr>';
@@ -636,7 +739,7 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     tableHtml += '<th>Action</th>';
     tableHtml += '</tr></thead><tbody>';
 
-    top10.forEach(function (s, index) {
+    displayedStudents.forEach(function (s, index) {
       const rankNum = index + 1;
       tableHtml += '<tr>';
       tableHtml += '<td><span class="rank-badge rank-' + rankNum + '">#' + rankNum + '</span></td>';
@@ -644,7 +747,7 @@ function updateAbsenteeAnalytics(summaryData, roster) {
       tableHtml += '<td><span class="badge-qr">QR: ' + s.qrCode + '</span></td>';
       tableHtml += '<td><strong>' + s.name + '</strong></td>';
       tableHtml += '<td><span class="badge-qual">' + s.qualification + '</span></td>';
-      tableHtml += '<td><strong style="color:#b91c1c;">' + s.daysAbsent + ' days</strong> <span class="hint">(' + (s.totalSessions - s.daysAbsent) + '/' + s.totalSessions + ' sessions)</span></td>';
+      tableHtml += '<td><strong style="color:#b91c1c;">' + s.daysAbsent + ' days</strong> <span class="hint">(' + s.detailStr + ')</span></td>';
       tableHtml += '<td>' + s.rate + '%</td>';
       tableHtml += '<td><button class="btn ghost btn-sm btn-filter-student" type="button" data-id="' + s.id + '">Filter</button></td>';
       tableHtml += '</tr>';
@@ -661,8 +764,8 @@ function updateAbsenteeAnalytics(summaryData, roster) {
 
     if (filterBtn) {
       filterBtn.disabled = false;
-      filterBtn.textContent = 'Filter Top Absentee (' + top10[0].id + ')';
-      filterBtn.onclick = function () { filterToStudent(top10[0].id); };
+      filterBtn.textContent = 'Filter Top Absentee (' + displayedStudents[0].id + ')';
+      filterBtn.onclick = function () { filterToStudent(displayedStudents[0].id); };
     }
   }
 }
@@ -689,7 +792,24 @@ function updateFilterPills(summaryData, absentCount) {
     if (absentCount !== undefined) {
       absentPillCount.textContent = absentCount;
     } else {
-      absentPillCount.textContent = '—';
+      const selectedDate = $('filter-date') ? $('filter-date').value : '';
+      const selectedQual = $('filter-qual') ? $('filter-qual').value : '';
+      const totalEnrolled = masterRoster.filter(function (t) {
+        return !selectedQual || t.qualification === selectedQual;
+      }).length || (summaryData ? summaryData.totalTrainees : 0);
+
+      let attendedCount = 0;
+      if (selectedDate && summaryData && summaryData.dateCounts && summaryData.dateCounts[selectedDate] !== undefined) {
+        attendedCount = summaryData.dateCounts[selectedDate];
+      } else if (summaryData && summaryData.todayAttendance !== undefined) {
+        attendedCount = summaryData.todayAttendance;
+      }
+
+      if (totalEnrolled > 0) {
+        absentPillCount.textContent = Math.max(0, totalEnrolled - attendedCount);
+      } else {
+        absentPillCount.textContent = '—';
+      }
     }
   }
 
@@ -834,6 +954,55 @@ $('btn-clear').addEventListener('click', function () {
   $('search-student').value = '';
   loadAllData(1);
 });
+
+// ─── Absentee Tracker Filter Listeners ───
+const absenteeQualSelect = $('absentee-filter-qual');
+if (absenteeQualSelect) {
+  absenteeQualSelect.addEventListener('change', function () {
+    updateAbsenteeAnalytics(summary, masterRoster);
+  });
+}
+
+const absenteeDateSelect = $('absentee-filter-date');
+if (absenteeDateSelect) {
+  absenteeDateSelect.addEventListener('change', function () {
+    const val = this.value;
+    if (val !== 'all' && !absenteeDateAttendedCache[val]) {
+      loadDateForAbsenteeAnalytics(val);
+    } else {
+      updateAbsenteeAnalytics(summary, masterRoster);
+    }
+  });
+}
+
+let absenteeSearchTimer = null;
+const absenteeSearchInput = $('absentee-search-student');
+if (absenteeSearchInput) {
+  absenteeSearchInput.addEventListener('input', function () {
+    clearTimeout(absenteeSearchTimer);
+    absenteeSearchTimer = setTimeout(function () {
+      updateAbsenteeAnalytics(summary, masterRoster);
+    }, 200);
+  });
+}
+
+const absenteeLimitSelect = $('absentee-limit-select');
+if (absenteeLimitSelect) {
+  absenteeLimitSelect.addEventListener('change', function () {
+    updateAbsenteeAnalytics(summary, masterRoster);
+  });
+}
+
+const btnResetAbsentee = $('btn-reset-absentee-filter');
+if (btnResetAbsentee) {
+  btnResetAbsentee.addEventListener('click', function () {
+    if ($('absentee-filter-qual') && CONFIG.IS_ADMIN) $('absentee-filter-qual').value = '';
+    if ($('absentee-filter-date')) $('absentee-filter-date').value = 'all';
+    if ($('absentee-search-student')) $('absentee-search-student').value = '';
+    if ($('absentee-limit-select')) $('absentee-limit-select').value = '10';
+    updateAbsenteeAnalytics(summary, masterRoster);
+  });
+}
 
 // Initial load
 loadAllData();

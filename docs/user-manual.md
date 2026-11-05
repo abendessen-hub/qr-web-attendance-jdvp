@@ -123,7 +123,13 @@ Navigate to **Progress** from the main dashboard:
 
 1. **Summary Cards:** Displays live counts of Total Trainees Registered, Active Scans Today, Total Historical Logs, **No Time Out Today**, and **Most Absentees**.
 2. **Attendance Insights & Absence Analytics:**
-   - **Top 10 Students with Most Absentees Table:** Displays a ranked table of the top 10 trainees with the highest absence counts across recorded sessions, showing their rank, Trainee ID, QR Code #, name, qualification, days absent, and attendance rate percentage. Filters dynamically when a qualification is selected or when searching by student name/ID. Includes quick "Filter" buttons to inspect any student's individual records.
+   - **Student Absenteeism & Most Absentees Tracker:** Displays trainees ranked by absences with their rank badge, Trainee ID, QR Code #, name, qualification, days absent (with session breakdown), and attendance rate percentage.
+   - **Integrated Filter Bar:** Right on the card, administrators can:
+     - Filter by **Qualification** (`Cookery`, `House Keeping`, `CSS`, `EIM`, `SMAW NC I`, `SMAW NC II`).
+     - Filter by **Time Range / Date**: Choose **All Time (All Recorded Sessions)** or select any specific session date.
+     - Search in real-time by **Student Name, Trainee ID, or QR Code #**.
+     - Choose how many students to display: **Top 10**, **Top 25**, **Top 50**, **Top 100**, or **Show All**.
+   - Includes quick **Filter** buttons to inspect any student's individual records in the main attendance table.
 3. **Attendance Progress by Date:**
    - Displays a dynamic history table of each date and total students recorded.
    - Shows a visual horizontal bar chart comparing attendance across days.

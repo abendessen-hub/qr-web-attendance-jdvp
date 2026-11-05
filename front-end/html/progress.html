@@ -113,26 +113,70 @@
       </section>
     </div>
 
-    <!-- Section: Top 10 Students with Most Absentees -->
-    <section class="panel progress-panel most-absentees-section" aria-label="Top 10 students with most absentees">
+    <!-- Section: Student Absenteeism & Most Absentees Tracker -->
+    <section class="panel progress-panel most-absentees-section" aria-label="Student absenteeism and most absentees tracker">
       <div class="progress-section-heading">
         <span class="section-icon section-icon-warn" aria-hidden="true">&#9888;</span>
         <div>
-          <h2>Top 10 Students with Most Absentees</h2>
-          <p class="hint">Shows the 10 students with the highest absence counts. Filter by selecting a qualification or searching a name below.</p>
+          <h2>Student Absenteeism &amp; Most Absentees Tracker</h2>
+          <p class="hint">Filter absentees by qualification, search students, select dates or all time, and choose how many students to display.</p>
         </div>
       </div>
 
       <div class="most-absentees-card" id="most-absentees-card">
         <div class="most-absentees-header">
           <div class="most-absentees-badge-title">
-            <span class="absentee-warning-badge" id="most-absent-badge">Top 10 Absentees</span>
+            <span class="absentee-warning-badge" id="most-absent-badge">Absentees</span>
             <h3 id="most-absent-title">Calculating...</h3>
           </div>
           <div class="most-absentees-actions">
             <button class="btn btn-sm" id="btn-filter-top-absent" type="button" disabled>Filter Top Absentee</button>
           </div>
         </div>
+
+        <!-- Filter bar directly on the Absentees Card -->
+        <div class="absentee-filter-bar">
+          <div class="absentee-filter-field">
+            <label for="absentee-filter-qual">Qualification</label>
+            <select id="absentee-filter-qual">
+              <option value="">All Qualifications</option>
+              <option value="Cookery">Cookery</option>
+              <option value="House Keeping">House Keeping</option>
+              <option value="CSS">CSS</option>
+              <option value="EIM">EIM</option>
+              <option value="SMAW NC I">SMAW NC I</option>
+              <option value="SMAW NC II">SMAW NC II</option>
+            </select>
+          </div>
+
+          <div class="absentee-filter-field">
+            <label for="absentee-filter-date">Time Range / Date</label>
+            <select id="absentee-filter-date">
+              <option value="all">All Time (All Sessions)</option>
+            </select>
+          </div>
+
+          <div class="absentee-filter-field absentee-search-field">
+            <label for="absentee-search-student">Search Trainee</label>
+            <input id="absentee-search-student" type="search" placeholder="Search by name, ID, or QR code...">
+          </div>
+
+          <div class="absentee-filter-field absentee-limit-field">
+            <label for="absentee-limit-select">Show Students</label>
+            <select id="absentee-limit-select">
+              <option value="10" selected>Top 10</option>
+              <option value="25">Top 25</option>
+              <option value="50">Top 50</option>
+              <option value="100">Top 100</option>
+              <option value="all">Show All</option>
+            </select>
+          </div>
+
+          <div class="absentee-filter-actions">
+            <button class="btn ghost btn-sm" id="btn-reset-absentee-filter" type="button">Reset</button>
+          </div>
+        </div>
+
         <div class="most-absentees-content" id="most-absentees-content">
           <p class="hint">Loading student absenteeism data...</p>
         </div>

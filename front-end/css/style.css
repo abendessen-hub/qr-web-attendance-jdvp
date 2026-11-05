@@ -2200,6 +2200,57 @@ tbody tr:last-child td {
   border-radius: 8px !important;
 }
 
+.absentee-filter-bar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin: 14px 0 16px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  border: 1px solid var(--palette-warn-border);
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.04);
+}
+
+.absentee-filter-field {
+  flex: 1 1 160px;
+  display: flex;
+  flex-direction: column;
+}
+
+.absentee-filter-field label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #78350f;
+  margin-bottom: 5px;
+}
+
+.absentee-filter-field select,
+.absentee-filter-field input {
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: #ffffff;
+}
+
+.absentee-search-field {
+  flex: 2 1 220px;
+}
+
+.absentee-limit-field {
+  flex: 0 1 130px;
+}
+
+.absentee-filter-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
 .most-absentees-content {
   color: var(--ink);
   font-size: 0.94rem;

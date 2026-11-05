@@ -490,6 +490,10 @@ function doGet(e) {
             if (!rTimeOut) todayNoTimeOut++;
           }
           traineeAttendanceCounts[rId] = (traineeAttendanceCounts[rId] || 0) + 1;
+          const normName = normalizeSearchText(rName);
+          if (normName) {
+            traineeAttendanceCounts[normName] = (traineeAttendanceCounts[normName] || 0) + 1;
+          }
           if (!qualificationTrainees[qualName]) qualificationTrainees[qualName] = {};
           qualificationTrainees[qualName][rId] = true;
 
