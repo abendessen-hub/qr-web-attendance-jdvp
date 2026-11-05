@@ -3,124 +3,257 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Progress | JDVP Monitoring Track</title>
+<title>Progress | JDVP A.I.M.S</title>
 <link rel="stylesheet" href="/front-end/css/style.css">
 </head>
 <body>
-<main class="wrap">
-  <header class="top">
-    <a class="back" href="/home">Home</a>
-    <h1>JDVP Monitoring Track - Progress</h1>
-  </header>
-
-  <!-- Summary Cards -->
-  <section class="panel">
-    <div class="stats-cards">
-      <div class="stat-card">
-        <span class="stat-num" id="stat-total-students">0</span>
-        <span class="stat-label">Total Trainees Registered</span>
+<main class="wrap progress-view">
+  <div class="page-shell progress-page-shell">
+    <header class="page-header progress-header">
+      <div class="title-block">
+        <span class="eyebrow">Attendance overview</span>
+        <h1>Progress dashboard</h1>
+        <p>Track attendance activity and trainee records in one place.</p>
       </div>
-      <div class="stat-card">
-        <span class="stat-num" id="stat-today-attendance">0</span>
-        <span class="stat-label">Active Scans Today</span>
+      <a class="back" href="/home"><span aria-hidden="true">←</span> Home</a>
+    </header>
+
+    <section class="panel progress-summary" aria-label="Attendance summary">
+      <div class="stats-cards">
+        <div class="stat-card">
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">Total trainees registered</span>
+            <span class="stat-num" id="stat-total-students">0</span>
+          </span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">Active scans today</span>
+            <span class="stat-num" id="stat-today-attendance">0</span>
+          </span>
+        </div>
+        <div class="stat-card stat-card-notimeout" id="card-no-timeout">
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">No Time Out Today</span>
+            <span class="stat-num" id="stat-no-timeout">0</span>
+          </span>
+        </div>
+        <div class="stat-card stat-card-warning" id="card-most-absent">
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">Most Absentees</span>
+            <span class="stat-num" id="stat-most-absent-count">0</span>
+            <span class="stat-sub" id="stat-most-absent-name">No absences yet</span>
+          </span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">Total attendance logs</span>
+            <span class="stat-num" id="stat-total-records">0</span>
+          </span>
+        </div>
       </div>
-      <div class="stat-card">
-        <span class="stat-num" id="stat-total-records">0</span>
-        <span class="stat-label">Total Attendance Logs</span>
+    </section>
+
+    <div class="progress-chart-grid">
+      <section class="panel progress-panel">
+        <div class="progress-section-heading">
+          <span class="section-icon" aria-hidden="true">01</span>
+          <div>
+            <h2>Attendance by date</h2>
+            <p class="hint">Daily attendance totals across your available qualifications.</p>
+          </div>
+        </div>
+
+        <div id="date-chart" class="chart-container" aria-label="Attendance per day bar chart">
+          <div class="chart-loading">Loading chart…</div>
+        </div>
+
+        <div class="table-wrap progress-history-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Total students recorded</th>
+              </tr>
+            </thead>
+            <tbody id="history-rows">
+              <tr><td colspan="2" class="table-empty">Loading history…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel progress-panel">
+        <div class="progress-section-heading">
+          <span class="section-icon section-icon-alt" aria-hidden="true">02</span>
+          <div>
+            <h2>By qualification</h2>
+            <p class="hint">Unique trainees recorded in each specialization.</p>
+          </div>
+        </div>
+
+        <div id="qual-chart" class="chart-container" aria-label="Attendance by qualification">
+          <div class="chart-loading">Loading qualification statistics…</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Section: Most Absentees Feature & Top Absentee Student Highlight -->
+    <section class="panel progress-panel most-absentees-section" aria-label="Student with most absentees">
+      <div class="progress-section-heading">
+        <span class="section-icon section-icon-warn" aria-hidden="true">★</span>
+        <div>
+          <h2>Student with Most Absentees</h2>
+          <p class="hint">Identifies trainee(s) with the highest recorded absences across all completed sessions.</p>
+        </div>
       </div>
-    </div>
-  </section>
 
-  <!-- Section 1: Attendance Progress by Date (History & Bar Chart) -->
-  <section class="panel">
-    <h2>Attendance Progress by Date</h2>
-    <p class="hint">Daily attendance totals for the qualifications available to your account.</p>
-    
-    <div id="date-chart" class="chart-container" aria-label="Attendance per day bar chart">
-      <div class="chart-loading">Loading chart…</div>
-    </div>
-
-    <div class="table-wrap" style="margin-top: 14px; max-height: 220px;">
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Total Students Recorded</th>
-          </tr>
-        </thead>
-        <tbody id="history-rows">
-          <tr><td colspan="2" class="table-empty">Loading history…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- Section 2: Attendance by Qualification -->
-  <section class="panel">
-    <h2>Attendance by Qualification</h2>
-    <p class="hint">Total unique trainees recorded per specialization.</p>
-    
-    <div id="qual-chart" class="chart-container" aria-label="Attendance by qualification">
-      <div class="chart-loading">Loading qualification statistics…</div>
-    </div>
-  </section>
-
-  <!-- Section 3: Daily Student History & Filterable Attendance Table -->
-  <section class="panel">
-    <h2>Daily Student Attendance History</h2>
-    <div class="row">
-      <div>
-        <label for="filter-date">Select Date</label>
-        <input id="filter-date" type="date">
+      <div class="most-absentees-card" id="most-absentees-card">
+        <div class="most-absentees-header">
+          <div class="most-absentees-badge-title">
+            <span class="absentee-warning-badge" id="most-absent-badge">Top Absentee</span>
+            <h3 id="most-absent-title">Calculating…</h3>
+          </div>
+          <div class="most-absentees-actions">
+            <button class="btn btn-sm" id="btn-filter-top-absent" type="button" disabled>Filter this Student</button>
+          </div>
+        </div>
+        <div class="most-absentees-content" id="most-absentees-content">
+          <p class="hint">Loading student absenteeism data…</p>
+        </div>
       </div>
-      <div>
-        <label for="filter-qual">Qualification</label>
-        <select id="filter-qual">
-          <option value="">All Qualifications</option>
-          <option value="Cookery">Cookery</option>
-          <option value="House Keeping">House Keeping</option>
-          <option value="CSS">CSS</option>
-          <option value="EIM">EIM</option>
-          <option value="SMAW NC II">SMAW NC II</option>
-          <option value="SMAW NC III">SMAW NC III</option>
-        </select>
-      </div>
-    </div>
-    <div class="row">
-      <div style="flex: 2 1 14rem;">
-        <label for="search-student">Search Trainee ID or Name</label>
-        <input id="search-student" type="search" placeholder="Search by ID (e.g. 60001) or name…">
-      </div>
-      <button class="btn ghost" id="btn-clear" type="button">Clear</button>
-      <button class="btn" id="btn-refresh" type="button">Refresh</button>
-    </div>
+    </section>
 
-    <div class="stats">
-      <span>Showing <strong id="count-shown">0</strong></span>
-      <span>Total filtered <strong id="count-total">0</strong></span>
-    </div>
+    <section class="panel progress-panel progress-records">
+      <div class="progress-section-heading">
+        <span class="section-icon section-icon-alt" aria-hidden="true">03</span>
+        <div>
+          <h2>Daily attendance records</h2>
+          <p class="hint">Filter and review trainee check-ins, absentees, and students with no time out.</p>
+        </div>
+      </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Trainee ID</th>
-            <th>Name</th>
-            <th>Qualification</th>
-            <th>Date</th>
-            <th>Time In</th>
-            <th>Time Out</th>
-          </tr>
-        </thead>
-        <tbody id="records-body"></tbody>
-      </table>
-      <div id="table-message" role="status">Loading attendance records…</div>
-    </div>
-  </section>
+      <div class="progress-filters">
+        <div class="progress-filter-field">
+          <label for="filter-date">Select Date</label>
+          <input id="filter-date" type="date">
+        </div>
+        <div class="progress-filter-field">
+          <label for="filter-qual">Qualification</label>
+          <select id="filter-qual">
+            <option value="">All Qualifications</option>
+            <option value="Cookery">Cookery</option>
+            <option value="House Keeping">House Keeping</option>
+            <option value="CSS">CSS</option>
+            <option value="EIM">EIM</option>
+            <option value="SMAW NC I">SMAW NC I</option>
+            <option value="SMAW NC II">SMAW NC II</option>
+          </select>
+        </div>
+        <div class="progress-filter-field">
+          <label for="filter-status">Status Filter</label>
+          <select id="filter-status">
+            <option value="all">All Records</option>
+            <option value="present">Present (Timed In)</option>
+            <option value="absent">Absent</option>
+            <option value="no-timeout">No Time Out</option>
+          </select>
+        </div>
+        <div class="progress-filter-field progress-search-field">
+          <label for="search-student">Search Trainee ID, QR Code, or Name</label>
+          <input id="search-student" type="search" placeholder="Search by ID, QR code (e.g. 0001), or name">
+        </div>
+        <div class="progress-filter-buttons">
+          <button class="btn ghost" id="btn-clear" type="button">Clear filters</button>
+          <button class="btn" id="btn-refresh" type="button">Refresh</button>
+        </div>
+      </div>
+
+      <!-- Quick status filter tabs / pills -->
+      <div class="filter-pills" role="tablist" aria-label="Attendance status filters">
+        <button class="filter-pill active" id="pill-all" type="button" data-status="all">All Records</button>
+        <button class="filter-pill" id="pill-present" type="button" data-status="present">Present</button>
+        <button class="filter-pill pill-absent" id="pill-absent" type="button" data-status="absent">
+          Absent <span class="pill-count" id="count-pill-absent">0</span>
+        </button>
+        <button class="filter-pill pill-no-timeout" id="pill-no-timeout" type="button" data-status="no-timeout">
+          No Time Out <span class="pill-count" id="count-pill-no-timeout">0</span>
+        </button>
+      </div>
+
+      <div class="progress-attendance-export">
+        <button class="btn" id="btn-attendance-export" type="button" disabled>
+          Download attendance check (.xlsx)
+        </button>
+        <p class="hint" id="attendance-export-status" role="status">
+          Select a date and qualification above to create a roster-based attendance report.
+        </p>
+      </div>
+
+      <div class="progress-results-bar">
+        <span>Showing <strong id="count-shown">0</strong> of <strong id="count-filtered">0</strong> matching records</span>
+        <span class="progress-results-divider" aria-hidden="true"></span>
+        <span>All records <strong id="count-total">0</strong></span>
+      </div>
+
+      <div class="table-wrap progress-records-wrap">
+        <div id="table-message" role="status">Loading attendance records…</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Trainee ID</th>
+              <th>QR Code #</th>
+              <th>Name</th>
+              <th>Qualification</th>
+              <th>Date</th>
+              <th>Time In</th>
+              <th>Time Out</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="records-body"></tbody>
+        </table>
+      </div>
+      <nav class="progress-pagination" aria-label="Attendance record pages">
+        <button class="btn ghost" id="prev-page" type="button" disabled>Previous</button>
+        <span id="page-label" aria-live="polite">Page 1 of 1</span>
+        <button class="btn ghost" id="next-page" type="button" disabled>Next</button>
+      </nav>
+    </section>
+  </div>
 </main>
-
+<footer class="site-footer">
+  <div class="footer-brand">
+    <img class="footer-brand-logo" src="/assets/company_logo.jpg" alt="JDVP brand logo">
+    <div class="footer-school">
+      <img class="footer-school-logo" src="/assets/school_logo.jpg" role="img" aria-label="School logo placeholder">
+      <div class="footer-school-details">
+        <span class="footer-school-label">School partner</span>
+        <span class="footer-school-name">Luis Y. Ferror Jr. Senior High School</span>
+      </div>
+    </div>
+  </div>
+  <p class="footer-credit"><span>Powered by</span><strong>Nexus</strong></p>
+</footer>
 <script src="/back-end/js/authenticate.js"></script>
 <script src="/back-end/js/config.js"></script>
+<script src="/back-end/lib/jszip.min.js"></script>
+<script src="/back-end/js/attendance-export.js"></script>
 <script src="/back-end/js/progress.js"></script>
 </body>
 </html>

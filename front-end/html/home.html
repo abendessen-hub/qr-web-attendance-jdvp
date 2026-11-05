@@ -8,27 +8,49 @@
 </head>
 <body>
   <main class="wrap">
-    <div class="hero">
-      <h1>JDVP Monitoring Track</h1>
-      <p>Luis Y. Ferrer Jr. Senior High School</p>
-      <a id="logoutBtn" class="back" href="#">Log Out</a>
-    </div>
+    <section class="dashboard-shell" aria-label="JDVP dashboard">
+      <header class="dashboard-head">
+        <div>
+          <p class="eyebrow">Dashboard</p>
+          <h1>Joint Delivery Voucher Program</h1>
+        </div>
+        <a id="logoutBtn" class="logout-link" href="#">Log Out</a>
+      </header>
 
-    <nav class="menu" aria-label="Main menu">
-      <a class="primary" href="/scan">
-        <strong>Scan QR</strong>
-        <span>Record trainee attendance via camera or manual entry</span>
-      </a>
-      <a href="/generate">
-        <strong>Generate QR</strong>
-        <span>Generate 4-digit badges and batch print on A4 sheets</span>
-      </a>
-      <a href="/progress">
-        <strong>Progress</strong>
-        <span>View live attendance progress, charts, and qualifications history</span>
-      </a>
-    </nav>
+      <div class="hero">
+        <h1>Welcome back</h1>
+        <p> Attendance Information and Monitoring System</p>
+      </div>
+
+      <nav class="menu" aria-label="Main menu">
+        <a class="primary" href="/scan">
+          <strong>Scan QR</strong>
+          <span>Record trainee attendance via camera or manual entry</span>
+        </a>
+        <a href="/generate">
+          <strong>Generate QR</strong>
+          <span>Generate 4-digit badges and batch print on A4 sheets</span>
+        </a>
+        <a href="/progress">
+          <strong>Progress</strong>
+          <span>View live attendance progress, charts, and qualifications history</span>
+        </a>
+      </nav>
+    </section>
   </main>
+  <footer class="site-footer">
+  <div class="footer-brand">
+    <img class="footer-brand-logo" src="/assets/company_logo.jpg" alt="JDVP brand logo">
+    <div class="footer-school">
+      <img class="footer-school-logo" src="/assets/school_logo.jpg" role="img" aria-label="School logo placeholder">
+      <div class="footer-school-details">
+        <span class="footer-school-label">School partner</span>
+        <span class="footer-school-name">Luis Y. Ferror Jr. Senior High School</span>
+      </div>
+    </div>
+  </div>
+  <p class="footer-credit"><span>Powered by</span><strong>Nexus</strong></p>
+</footer>
 </body>
 
 <script src="/back-end/js/authenticate.js"></script>

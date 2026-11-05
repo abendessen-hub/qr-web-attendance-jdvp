@@ -171,6 +171,30 @@ test('qualification accounts cannot read or register for another qualification',
     });
     assert.equal(forbiddenRead.statusCode, 403);
 
+    const forbiddenFilteredRead = await invoke(proxy, {
+      method: 'GET',
+      url: '/api/api?action=records&filterQualification=Cookery',
+      headers: { cookie }
+    });
+    assert.equal(forbiddenFilteredRead.statusCode, 403);
+
+    const allowedFilteredRead = await invoke(proxy, {
+      method: 'GET',
+      url: '/api/api?action=records&filterQualification=house+keeping&page=1&pageSize=50',
+      headers: { cookie }
+    });
+    assert.equal(allowedFilteredRead.statusCode, 200);
+    assert.match(upstreamUrl, /qualification=2/);
+    assert.match(upstreamUrl, /filterQualification=House\+Keeping/);
+
+    const fullNameSearch = await invoke(proxy, {
+      method: 'GET',
+      url: '/api/api?action=records&search=Juan+Dela+Cruz',
+      headers: { cookie }
+    });
+    assert.equal(fullNameSearch.statusCode, 200);
+    assert.match(upstreamUrl, /search=Juan\+Dela\+Cruz/);
+
     const adminLogin = await invoke(login, {
       method: 'POST',
       headers: {},
@@ -235,7 +259,7 @@ test('Apps Script enforces limited time windows and allows admin time-outs', () 
 
   assert.equal(isTimeOutAllowed(14, false), false);
   assert.equal(isTimeOutAllowed(15, false), true);
-  assert.equal(isTimeOutAllowed(21, false), true);
+  assert.equal(isTimeOutAllowed(21, false), false);
   assert.equal(isTimeOutAllowed(22, false), false);
   assert.equal(isTimeOutAllowed(23, false), false);
   assert.equal(isTimeOutAllowed(22, true), true);

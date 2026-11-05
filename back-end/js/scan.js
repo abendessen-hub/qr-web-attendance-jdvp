@@ -1,5 +1,6 @@
 // Continuous QR scanner with live camera preview and fallback connection
 // Supports 4-digit badges (0001) that become 5-digit Trainee IDs (QNNNN)
+import { showNotification } from '/back-end/js/notification.js';
 
 const resultEl = document.getElementById('result');
 const manualForm = document.getElementById('manual-form');
@@ -9,7 +10,14 @@ const cameraStatus = document.getElementById('camera-status');
 const scanQualSelect = document.getElementById('scan-qual');
 const qualHint = document.getElementById('qual-hint');
 
+// Easter egg
+const tetosound = new Audio('/assets/teto-kasane.mp3')
+const tetoclosesound = new Audio('/assets/teto-close.mp3')
+tetoclosesound.preload = 'auto'
+tetosound.preload = 'auto'
+
 // Quick registration modal elements
+const tetoModal = document.getElementById('teto-modal');
 const regModal = document.getElementById('reg-modal');
 const quickRegForm = document.getElementById('quick-reg-form');
 const regBadgePreview = document.getElementById('reg-badge-preview');
@@ -17,14 +25,14 @@ const regQualSelect = document.getElementById('reg-qual');
 const regNameInput = document.getElementById('reg-name');
 const regIdPreview = document.getElementById('reg-id-preview');
 const regCancelBtn = document.getElementById('reg-cancel');
+const tetoCloseBtn = document.getElementById('teto-close');
 const regSubmitBtn = quickRegForm.querySelector('button[type="submit"]');
 
 const SAME_CODE_COOLDOWN_MS = 3000;
 const REQUEST_TIMEOUT_MS = 30000;
 
-let busy = false;
-let lastId = '';
-let lastAt = 0;
+const processingIds = new Set();
+const recentScanAt = new Map();
 let lastBadAt = 0;
 let registeringTrainee = false;
 let scanner = null;
@@ -48,6 +56,8 @@ function beep(ok) {
 function show(kind, message) {
   resultEl.className = kind;
   resultEl.textContent = message;
+  const toastType = kind === 'ok' ? 'ok' : 'error';
+  showNotification(message, toastType);
   if (navigator.vibrate) navigator.vibrate(kind === 'ok' ? 120 : [80, 60, 80]);
   beep(kind === 'ok');
 }
@@ -94,7 +104,7 @@ async function postAction(payload) {
       return data;
     } catch (err) {
       if (ctrl.signal.aborted) {
-        const timeoutError = new Error('No response within 30 seconds. Attendance may already have been recorded. Check today\'s attendance before scanning again.');
+        const timeoutError = new Error('No response after 30 seconds. Attendance may already have been recorded; check today\'s attendance before scanning again.');
         timeoutError.name = 'TimeoutError';
         throw timeoutError;
       }
@@ -109,57 +119,72 @@ async function postAction(payload) {
 }
 
 async function record(id) {
-  if (busy || registeringTrainee) return;
+  if (registeringTrainee || processingIds.has(id)) return;
 
-  busy = true;
-  lastId = id;
-  lastAt = Date.now();
+  processingIds.add(id);
+  recentScanAt.set(id, Date.now());
+  resultEl.className = 'processing';
+  resultEl.textContent = 'Recording attendance for ' + id + '…';
+
+  try {
+    if (id.includes('401')) {
+      tetoModal.hidden = false;
+      tetosound.currentTime = 0;
+      tetosound.play().catch(function (err) {
+        console.warn('Could not play Teto sound:', err);
+      });
+      showNotification('You really are stupid aren\'t you?', 'error');
+    }
+  } catch (err) {
+    console.error('Error checking for Easter egg:', err);
+  }
 
   try {
     await configReady;
   } catch (err) {
-    show('bad', err.message || 'Could not verify account access.');
-    lastAt = Date.now();
-    busy = false;
+    show('bad', err.message || 'Unable to verify account access.');
+    recentScanAt.set(id, Date.now());
+    processingIds.delete(id);
     return;
   }
-
-  resultEl.className = 'processing';
-  resultEl.textContent = 'Verifying ID ' + id + '…';
 
   try {
     const data = await postAction({ action: 'scan', id: id });
     
     if (data.status === 'time_in') {
-      show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime In: ' + data.time);
+      show('ok', 'Time in recorded for ' + (data.name || 'Trainee') + ' (' + (data.id || id) + ') at ' + data.time + '.');
     } else if (data.status === 'time_out') {
-      show('ok', (data.name || 'Trainee') + ' (' + (data.id || id) + ')\nTime Out: ' + data.time);
+      show('ok', 'Time out recorded for ' + (data.name || 'Trainee') + ' (' + (data.id || id) + ') at ' + data.time + '.');
     } else if (data.status === 'not_time_out') {
-      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Not Time out yet (Window: 3:00 PM - 10:00 PM)');
+      show('dup', (data.name ? data.name + ' (' + (data.id || id) + '): ' : '') + 'Time out is available from 3:00 PM to 8:00 PM.');
     } else if (data.status === 'already_completed') {
-      show('dup', (data.name ? data.name + ' (' + (data.id || id) + ')\n' : '') + 'Attendance already completed for today.');
+      show('dup', (data.name ? data.name + ' (' + (data.id || id) + '): ' : '') + 'Attendance is already complete for today.');
     } else if (data.status === 'time_window') {
-      show('bad', data.message || 'Time In can only be recorded from 7:00 AM to 3:00 PM.');
+      show('bad', data.message || 'Time in is available from 7:00 AM to 3:00 PM.');
     } else if (data.status === 'wrong_qualification') {
-      show('bad', data.message || 'This trainee belongs to another qualification.');
+      show('bad', data.message || 'This trainee is not assigned to the selected qualification.');
     } else if (data.status === 'not_registered') {
-      show('bad', 'Badge ' + id + ' is not registered yet.');
+      show('bad', 'Badge ' + id + ' is not registered.');
       openQuickRegistration(id);
     } else if (data.status === 'invalid') {
-      show('bad', 'Invalid QR code.');
+      show('bad', 'This QR code is invalid.');
     } else {
-      show('bad', data.message || 'Could not record. Try again.');
+      show('bad', data.message || 'Could not record attendance. Please try again.');
     }
   } catch (err) {
     if (err.name === 'TimeoutError') {
       show('dup', err.message);
     } else {
-      show('bad', 'Connection error: ' + (err.message || 'Please check network and try again.'));
+      show('bad', err.message ? 'Could not connect: ' + err.message : 'Could not connect. Check your network and try again.');
     }
   } finally {
-    lastAt = Date.now();
-    busy = false;
+    recentScanAt.set(id, Date.now());
+    processingIds.delete(id);
   }
+}
+
+function hasActiveWork() {
+  return registeringTrainee || processingIds.size > 0;
 }
 
 // ---------- Qualification Selection & Persistence ----------
@@ -173,7 +198,7 @@ function updateQualHint() {
     if (qualHint) {
       qualHint.innerHTML = '<strong>Please select a qualification first</strong> before scanning or manual entry.';
     }
-    if (!busy) {
+    if (!hasActiveWork()) {
       resultEl.textContent = 'Please select a qualification above to begin.';
     }
   } else {
@@ -181,7 +206,7 @@ function updateQualHint() {
     if (qualHint) {
       qualHint.innerHTML = 'Active: <strong>' + qualName + '</strong> (4-digit badge 0001 &rarr; Trainee ID <strong>' + qp + '0001</strong>)';
     }
-    if (!busy) {
+    if (!hasActiveWork()) {
       resultEl.textContent = 'Ready for ' + qualName + '. Hold QR code steady within the camera frame.';
     }
   }
@@ -214,7 +239,7 @@ configReady.then(function () {
   }
   updateQualHint();
 }).catch(function (err) {
-  show('bad', err.message || 'Could not verify account access.');
+  show('bad', err.message || 'Unable to verify account access.');
 });
 
 if (scanQualSelect) {
@@ -249,7 +274,7 @@ function resolveTraineeId(rawText) {
   if (norm.length === 5) {
     const prefix = norm.charAt(0);
     if (prefix !== selectedQual) {
-      show('bad', 'ID ' + norm + ' belongs to ' + (QUALIFICATIONS[prefix] || 'another qualification') + ', not ' + QUALIFICATIONS[selectedQual] + '.');
+      show('bad', 'ID ' + norm + ' is assigned to ' + (QUALIFICATIONS[prefix] || 'another qualification') + ', not ' + QUALIFICATIONS[selectedQual] + '.');
       return null;
     }
     return norm;
@@ -285,6 +310,15 @@ function closeQuickRegistration() {
 regQualSelect.addEventListener('change', updateGeneratedIdPreview);
 regCancelBtn.addEventListener('click', closeQuickRegistration);
 
+
+tetoCloseBtn.addEventListener('click', function () {
+  tetoclosesound.currentTime = 0;
+  tetoclosesound.play().catch(function (err) {
+    console.warn('Could not play Teto close sound:', err);
+  });
+  tetoModal.hidden = true;
+});
+
 quickRegForm.addEventListener('submit', async function (e) {
   e.preventDefault();
   if (registeringTrainee) return;
@@ -301,7 +335,6 @@ quickRegForm.addEventListener('submit', async function (e) {
   };
 
   registeringTrainee = true;
-  busy = true;
   regSubmitBtn.disabled = true;
   closeQuickRegistration();
   show('', 'Registering ' + name + ' (' + assignedId + ')…');
@@ -317,28 +350,29 @@ quickRegForm.addEventListener('submit', async function (e) {
       throw new Error(regRes.message || 'Registration failed.');
     }
 
-    show('ok', 'Registered: ' + regRes.name + ' (' + assignedId + '). Recording Time In…');
+    show('ok', 'Registration complete for ' + regRes.name + ' (' + assignedId + '). Recording time in…');
 
     registeringTrainee = false;
     regSubmitBtn.disabled = false;
-    busy = false;
     record(assignedId);
   } catch (err) {
     registeringTrainee = false;
     regSubmitBtn.disabled = false;
-    busy = false;
     openQuickRegistration(registration.badge);
     regQualSelect.value = registration.qualification;
     regNameInput.value = registration.name;
     updateGeneratedIdPreview();
-    show('bad', 'Registration failed: ' + (err.message || 'Please try again.'));
+    show('bad', 'Could not register trainee: ' + (err.message || 'Please try again.'));
   }
 });
 
 // ---------- Continuous Live Scan ----------
 function onScan(text) {
-  if (busy || !regModal.hidden) return;
+  if (registeringTrainee || !regModal.hidden) return;
   const now = Date.now();
+  for (const [recentId, scannedAt] of recentScanAt) {
+    if (now - scannedAt >= SAME_CODE_COOLDOWN_MS) recentScanAt.delete(recentId);
+  }
 
   const selectedQual = getSelectedQualification();
   if (!selectedQual) {
@@ -356,7 +390,7 @@ function onScan(text) {
     return;
   }
 
-  if (id === lastId && now - lastAt < SAME_CODE_COOLDOWN_MS) {
+  if (now - (recentScanAt.get(id) || 0) < SAME_CODE_COOLDOWN_MS) {
     return;
   }
 
@@ -432,10 +466,10 @@ async function startScanner() {
     console.error('Could not start QR scanner:', err);
     cameraStatus.hidden = false;
     cameraStatus.textContent = denied
-      ? 'Camera access is blocked. Allow camera permission in your browser settings, then reload.'
+      ? 'Camera access is blocked. Enable camera permissions in your browser settings, then reload.'
       : 'Camera unavailable. Use HTTPS, check browser camera permission, or use manual entry below.';
     show('bad', denied
-      ? 'Camera blocked. Allow camera permissions or use manual entry below.'
+      ? 'Camera access is blocked. Enable camera permissions or use manual entry below.'
       : 'Camera unavailable. Use HTTPS or manual entry below.');
   }
 }

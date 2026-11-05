@@ -8,28 +8,60 @@
 </head>
 <body>
 <main class="wrap">
-  <div class="hero">
-    <h1>JDVP Monitoring Track</h1>
-    <p>Luis Y. Ferrer Jr. Senior High School</p>
+  <div class="auth-shell">
+    <section class="brand-panel" aria-label="JDVP monitor overview">
+      <img class="brand-badge" src="/assets/company_logo.jpg" alt="Company logo"></img>
+      <p class="eyebrow">JDVP A.I.M.S</p>
+      <h1>Joint Delivery Voucher Program</h1>
+      <p>Attendance Information and Monitoring System</p>
+      <ul class="feature-list">
+        <li>Live QR scanning</li>
+        <li>Qualification-based access</li>
+        <li>Attendance progress tracking</li>
+      </ul>
+    </section>
+
+    <section class="login-panel panel" aria-label="Operator login">
+      <div class="panel-header">
+        <p class="eyebrow">Operator access</p>
+        <h2>Sign in</h2>
+      </div>
+      <form id="login-form" autocomplete="off" novalidate>
+        <div class="row">
+          <div>
+            <label for="username-input">Username</label>
+            <input id="username-input" type="text" placeholder="1trainee2026" required>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="password-input">Password</label>
+            <input id="password-input" type="password" placeholder="••••" required>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn" type="submit">Enter</button>
+        </div>
+      </form>
+      <p class="hint">Enter your assigned operator username and password.</p>
+    </section>
   </div>
 
-  <section class="panel">
-    <form id="login-form" autocomplete="off">
-      <div class="row">
-        <div>
-          <label for="username-input">Username</label>
-          <input id="username-input" type="text" placeholder="1trainee2026" required>
-        </div>
-        <div>
-          <label for="password-input">Password</label>
-          <input id="password-input" type="password" placeholder="••••" required>
-        </div>
-        <button class="btn" type="submit">Enter</button>
-      </div>
-    </form>
-    <p class="hint">Enter your assigned operator username and password.</p>
-  </section>
 </main>
-<script src="back-end/js/login.js"></script>
+<footer class="site-footer">
+  <div class="footer-brand">
+    <img class="footer-brand-logo" src="/assets/company_logo.jpg" alt="JDVP brand logo">
+    <div class="footer-school">
+      <img class="footer-school-logo" src="/assets/school_logo.jpg" role="img" aria-label="School logo placeholder">
+      <div class="footer-school-details">
+        <span class="footer-school-label">School partner</span>
+        <span class="footer-school-name">Luis Y. Ferror Jr. Senior High School</span>
+      </div>
+    </div>
+  </div>
+  <p class="footer-credit"><span>Powered by</span><strong>Nexus</strong></p>
+</footer>
+
+<script type="module" src="/back-end/js/login.js"></script>
 </body>
 </html>

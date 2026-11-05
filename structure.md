@@ -16,5 +16,3 @@ jdvp-attendance/
 │   └── jszip.min.js
 ├── backend/
 │   └── Code.gs             ← doPost (record scan), doGet (return records)
-└── docs/
-    └── user-manual.md      ← required deliverable
