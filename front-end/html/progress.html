@@ -130,87 +130,12 @@
             <h3 id="most-absent-title">Calculating…</h3>
           </div>
           <div class="most-absentees-actions">
-            <button class="btn ghost btn-sm" id="btn-toggle-rankings" type="button">View Absentees Leaderboard</button>
             <button class="btn btn-sm" id="btn-filter-top-absent" type="button" disabled>Filter this Student</button>
           </div>
         </div>
         <div class="most-absentees-content" id="most-absentees-content">
           <p class="hint">Loading student absenteeism data…</p>
         </div>
-      </div>
-
-      <!-- Collapsible Absentees Ranking Panel -->
-      <div class="absentee-ranking-panel" id="absentee-ranking-panel" hidden>
-        <div class="ranking-panel-header">
-          <div>
-            <h3>Trainee Absenteeism Leaderboard</h3>
-            <p class="hint">Students ranked by total absences from highest to lowest. Click "Filter" to inspect records.</p>
-          </div>
-          <button class="btn ghost btn-sm" id="btn-close-rankings" type="button">Close Leaderboard</button>
-        </div>
-        <div class="table-wrap ranking-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Trainee ID</th>
-                <th>QR Code #</th>
-                <th>Name</th>
-                <th>Qualification</th>
-                <th>Days Present</th>
-                <th>Days Absent</th>
-                <th>Attendance Rate</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="ranking-body">
-              <tr><td colspan="9" class="table-empty">Loading ranking…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- Collapsible Student Directory & QR Badges Panel -->
-    <section class="panel progress-panel roster-directory-panel" id="roster-directory-panel" hidden>
-      <div class="roster-panel-header">
-        <div>
-          <h2>Registered Student Directory &amp; QR Code Numbers</h2>
-          <p class="hint">Search and check any student's registered name, qualification, and 4-digit QR code number.</p>
-        </div>
-        <button class="btn ghost btn-sm" id="btn-close-roster" type="button">Close Directory</button>
-      </div>
-      <div class="roster-search-bar">
-        <input id="search-roster" type="search" placeholder="Search by QR code number (e.g. 0001), Trainee ID, or name…">
-        <select id="filter-roster-qual">
-          <option value="">All Qualifications</option>
-          <option value="Cookery">Cookery</option>
-          <option value="House Keeping">House Keeping</option>
-          <option value="CSS">CSS</option>
-          <option value="EIM">EIM</option>
-          <option value="SMAW NC I">SMAW NC I</option>
-          <option value="SMAW NC II">SMAW NC II</option>
-        </select>
-        <span class="roster-count-badge" id="roster-count-badge">400 trainees</span>
-      </div>
-      <div class="table-wrap roster-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Trainee ID</th>
-              <th>QR Code #</th>
-              <th>Name</th>
-              <th>Qualification</th>
-              <th>Days Present</th>
-              <th>Days Absent</th>
-              <th>Attendance Rate</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="roster-body">
-            <tr><td colspan="8" class="table-empty">Loading directory…</td></tr>
-          </tbody>
-        </table>
       </div>
     </section>
 
@@ -256,7 +181,6 @@
         <div class="progress-filter-buttons">
           <button class="btn ghost" id="btn-clear" type="button">Clear filters</button>
           <button class="btn" id="btn-refresh" type="button">Refresh</button>
-          <button class="btn ghost" id="btn-view-roster" type="button" title="View all trainees with their QR code numbers">Student QR Directory</button>
         </div>
       </div>
 

@@ -279,8 +279,28 @@ async function handleAbsentFilter(page, date, qualification, search, requestId) 
   const records = await fetchAttendanceExportRecords(date, qualification);
   if (requestId !== loadRequestId) return;
 
-  // 2. Filter master roster by qualification
+  // 2. Filter master roster by qualification or search
   const targetQual = qualification || (!CONFIG.IS_ADMIN ? QUALIFICATIONS[CONFIG.QUALIFICATION] : '');
+
+  // Do not dump all 400 names across all qualifications if neither a qualification nor a search term is specified
+  if (!targetQual && !search) {
+    currentRecords = [];
+    currentPage = 1;
+    totalPages = 1;
+    $('records-body').replaceChildren();
+    $('table-message').textContent = 'Please pick a qualification or search by student name/ID to view absent students.';
+    $('table-message').hidden = false;
+    renderSummaryCards(summary || { totalTrainees: masterRoster.length, todayAttendance: 0, totalRecords: 0 });
+    if (summary) {
+      renderDailyHistoryAndChart(summary.dateCounts || {});
+      renderQualificationProgress(summary.qualificationCounts || {});
+      updateAbsenteeAnalytics(summary, masterRoster);
+      updateFilterPills(summary, 0);
+    }
+    renderFilteredTable({ page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 1 });
+    return;
+  }
+
   const rosterForQual = masterRoster.filter(function (t) {
     return !targetQual || t.qualification === targetQual;
   });
@@ -647,145 +667,6 @@ function updateAbsenteeAnalytics(summaryData, roster) {
       filterBtn.onclick = function () { filterToStudent(topStudents[0].id); };
     }
   }
-
-  renderAbsenteeRankings(rankedAbsentees);
-  renderRosterDirectory(roster, stats);
-}
-
-// ─── Render Absentees Leaderboard Ranking ───
-function renderAbsenteeRankings(rankedList) {
-  const body = $('ranking-body');
-  if (!body) return;
-  body.replaceChildren();
-
-  if (!rankedList || rankedList.length === 0) {
-    const tr = document.createElement('tr');
-    const td = document.createElement('td');
-    td.colSpan = 9; td.className = 'table-empty';
-    td.textContent = 'No trainee attendance records available for ranking.';
-    tr.appendChild(td);
-    body.appendChild(tr);
-    return;
-  }
-
-  rankedList.forEach(function (s, index) {
-    const tr = document.createElement('tr');
-
-    const tdRank = document.createElement('td');
-    tdRank.innerHTML = '<strong>#' + (index + 1) + '</strong>';
-
-    const tdId = document.createElement('td');
-    tdId.innerHTML = '<span class="id-badge">' + s.id + '</span>';
-
-    const tdQr = document.createElement('td');
-    tdQr.innerHTML = '<span class="badge-qr">QR: ' + s.qrCode + '</span>';
-
-    const tdName = document.createElement('td');
-    tdName.textContent = s.name;
-
-    const tdQual = document.createElement('td');
-    tdQual.innerHTML = '<span class="badge-qual">' + s.qualification + '</span>';
-
-    const tdPres = document.createElement('td');
-    tdPres.textContent = s.daysPresent + ' / ' + s.totalSessions;
-
-    const tdAbs = document.createElement('td');
-    if (s.daysAbsent > 0) {
-      tdAbs.innerHTML = '<strong style="color:#b91c1c;">' + s.daysAbsent + ' days</strong>';
-    } else {
-      tdAbs.innerHTML = '<span style="color:#166534;font-weight:600;">0 (Perfect)</span>';
-    }
-
-    const tdRate = document.createElement('td');
-    tdRate.textContent = s.rate + '%';
-
-    const tdAction = document.createElement('td');
-    const actionBtn = document.createElement('button');
-    actionBtn.className = 'btn ghost btn-sm';
-    actionBtn.textContent = 'Filter';
-    actionBtn.type = 'button';
-    actionBtn.onclick = function () { filterToStudent(s.id); };
-    tdAction.appendChild(actionBtn);
-
-    tr.append(tdRank, tdId, tdQr, tdName, tdQual, tdPres, tdAbs, tdRate, tdAction);
-    body.appendChild(tr);
-  });
-}
-
-// ─── Render Student Directory & QR Badges ───
-function renderRosterDirectory(roster, stats) {
-  const body = $('roster-body');
-  if (!body) return;
-
-  const searchTerm = ($('search-roster') ? $('search-roster').value : '').trim().toLowerCase();
-  const qualFilter = $('filter-roster-qual') ? $('filter-roster-qual').value : '';
-  const statsMap = {};
-  if (stats) {
-    stats.forEach(function (s) { statsMap[s.id] = s; });
-  }
-
-  const filtered = roster.filter(function (t) {
-    const matchQual = !qualFilter || t.qualification === qualFilter;
-    if (!matchQual) return false;
-    if (!searchTerm) return true;
-    return t.id.toLowerCase().includes(searchTerm) ||
-      t.qrCode.toLowerCase().includes(searchTerm) ||
-      t.name.toLowerCase().includes(searchTerm);
-  });
-
-  const countBadge = $('roster-count-badge');
-  if (countBadge) {
-    countBadge.textContent = filtered.length + ' trainee' + (filtered.length === 1 ? '' : 's');
-  }
-
-  body.replaceChildren();
-
-  if (filtered.length === 0) {
-    const tr = document.createElement('tr');
-    const td = document.createElement('td');
-    td.colSpan = 8; td.className = 'table-empty';
-    td.textContent = 'No trainees match your search.';
-    tr.appendChild(td);
-    body.appendChild(tr);
-    return;
-  }
-
-  filtered.forEach(function (t) {
-    const tr = document.createElement('tr');
-    const st = statsMap[t.id] || { daysPresent: 0, daysAbsent: 0, rate: 100 };
-
-    const tdId = document.createElement('td');
-    tdId.innerHTML = '<span class="id-badge">' + t.id + '</span>';
-
-    const tdQr = document.createElement('td');
-    tdQr.innerHTML = '<span class="badge-qr">QR: ' + t.qrCode + '</span>';
-
-    const tdName = document.createElement('td');
-    tdName.textContent = t.name;
-
-    const tdQual = document.createElement('td');
-    tdQual.innerHTML = '<span class="badge-qual">' + t.qualification + '</span>';
-
-    const tdPres = document.createElement('td');
-    tdPres.textContent = st.daysPresent;
-
-    const tdAbs = document.createElement('td');
-    tdAbs.textContent = st.daysAbsent;
-
-    const tdRate = document.createElement('td');
-    tdRate.textContent = st.rate + '%';
-
-    const tdAction = document.createElement('td');
-    const actionBtn = document.createElement('button');
-    actionBtn.className = 'btn ghost btn-sm';
-    actionBtn.textContent = 'View Records';
-    actionBtn.type = 'button';
-    actionBtn.onclick = function () { filterToStudent(t.id); };
-    tdAction.appendChild(actionBtn);
-
-    tr.append(tdId, tdQr, tdName, tdQual, tdPres, tdAbs, tdRate, tdAction);
-    body.appendChild(tr);
-  });
 }
 
 function filterToStudent(studentId) {
@@ -793,13 +674,7 @@ function filterToStudent(studentId) {
   currentStatusFilter = 'all';
   $('filter-status').value = 'all';
   updatePillSelection('all');
-  closePanels();
   loadAllData(1);
-}
-
-function closePanels() {
-  if ($('absentee-ranking-panel')) $('absentee-ranking-panel').hidden = true;
-  if ($('roster-directory-panel')) $('roster-directory-panel').hidden = true;
 }
 
 // ─── Filter Pills Sync ───
@@ -962,59 +837,6 @@ $('btn-clear').addEventListener('click', function () {
   $('search-student').value = '';
   loadAllData(1);
 });
-
-// Toggle Top Absentees Rankings
-const toggleRankingsBtn = $('btn-toggle-rankings');
-if (toggleRankingsBtn) {
-  toggleRankingsBtn.addEventListener('click', function () {
-    const panel = $('absentee-ranking-panel');
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) {
-      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  });
-}
-
-const closeRankingsBtn = $('btn-close-rankings');
-if (closeRankingsBtn) {
-  closeRankingsBtn.addEventListener('click', function () {
-    $('absentee-ranking-panel').hidden = true;
-  });
-}
-
-// Toggle Student Directory & QR Badges
-const viewRosterBtn = $('btn-view-roster');
-if (viewRosterBtn) {
-  viewRosterBtn.addEventListener('click', function () {
-    const panel = $('roster-directory-panel');
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) {
-      renderRosterDirectory(masterRoster, rankedAbsentees);
-      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  });
-}
-
-const closeRosterBtn = $('btn-close-roster');
-if (closeRosterBtn) {
-  closeRosterBtn.addEventListener('click', function () {
-    $('roster-directory-panel').hidden = true;
-  });
-}
-
-const searchRosterInput = $('search-roster');
-if (searchRosterInput) {
-  searchRosterInput.addEventListener('input', function () {
-    renderRosterDirectory(masterRoster, rankedAbsentees);
-  });
-}
-
-const filterRosterQualSelect = $('filter-roster-qual');
-if (filterRosterQualSelect) {
-  filterRosterQualSelect.addEventListener('change', function () {
-    renderRosterDirectory(masterRoster, rankedAbsentees);
-  });
-}
 
 // Initial load
 loadAllData();
