@@ -831,6 +831,57 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     qualificationSummaries: qualSummaryList
   };
 }
+
+// ─── Download Absentee Report as Excel ───
+async function downloadAbsenteeReport() {
+  var btn = $('btn-download-absentee-report');
+  if (!lastAbsenteeReportData) {
+    alert('No absentee data loaded yet. Please wait for the data to load and try again.');
+    return;
+  }
+  if (typeof AttendanceExport === 'undefined' || !AttendanceExport.createAbsenteeReportWorkbook) {
+    alert('Excel export library is not ready. Please refresh the page.');
+    return;
+  }
+  if (typeof JSZip === 'undefined') {
+    alert('JSZip library is not ready. Please refresh the page.');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+  }
+
+  try {
+    var blob = await AttendanceExport.createAbsenteeReportWorkbook(lastAbsenteeReportData, JSZip);
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+
+    var qualSlug = (lastAbsenteeReportData.qualification || 'All')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    var today = new Date();
+    var dateSlug = today.getFullYear() + '-'
+      + String(today.getMonth() + 1).padStart(2, '0') + '-'
+      + String(today.getDate()).padStart(2, '0');
+
+    link.href = url;
+    link.download = 'Absentee_Report_' + qualSlug + '_' + dateSlug + '.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+  } catch (err) {
+    console.error('Error generating absentee report:', err);
+    alert('Failed to generate the report: ' + (err.message || err));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download Excel';
+    }
+  }
+}
+
 function filterToStudent(studentId) {
   $('search-student').value = studentId;
   currentStatusFilter = 'all';
