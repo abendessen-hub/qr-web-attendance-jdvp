@@ -565,6 +565,10 @@ function doGet(e) {
     const trainees = Object.values(traineesMap).sort(function(a, b) {
       return a.id.localeCompare(b.id);
     });
+    const qualificationCounts = {};
+    for (const [qualification, ids] of Object.entries(qualificationTrainees)) {
+      qualificationCounts[qualification] = Object.keys(ids).length;
+    }
 
     return reply({
       status: 'ok',

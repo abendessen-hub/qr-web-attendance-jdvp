@@ -130,6 +130,18 @@ async function fetchAttendanceExportRecords(date, qualification, search) {
   return firstData.records.concat(...additionalRecords);
 }
 
+async function ensureAbsenteeAttendanceCounts(summaryData) {
+  const counts = summaryData.traineeAttendanceCounts;
+  if (counts && Object.keys(counts).length > 0) return;
+
+  const records = await fetchAttendanceExportRecords('', '', '');
+  const derivedCounts = AttendanceSummary.countAttendanceByTrainee(records);
+  if (Number(summaryData.totalRecords) > 0 && Object.keys(derivedCounts).length === 0) {
+    throw new Error('Attendance records did not include trainee IDs and dates.');
+  }
+  summaryData.traineeAttendanceCounts = derivedCounts;
+}
+
 async function downloadAttendanceCheck() {
   const button = $('btn-attendance-export');
   const status = $('attendance-export-status');
@@ -244,6 +256,13 @@ async function loadAllData(page = currentPage) {
     }
 
     summary = data.summary;
+    try {
+      await ensureAbsenteeAttendanceCounts(summary);
+    } catch (error) {
+      summary.traineeAttendanceCounts = null;
+      console.error('Could not load attendance counts for absentee analytics:', error);
+    }
+    if (requestId !== loadRequestId) return;
     currentPage = data.pagination.page;
     totalPages = Math.max(data.pagination.totalPages, 1);
 
@@ -593,6 +612,17 @@ function updateAbsenteeAnalytics(summaryData, roster) {
   if (!summaryData) return;
   const allDates = Object.keys(summaryData.dateCounts || {}).sort();
   populateAbsenteeDateDropdown(allDates, summaryData.dateCounts || {});
+  const counts = summaryData.traineeAttendanceCounts;
+  if (allDates.length > 0 && (!counts || Object.keys(counts).length === 0)) {
+    const titleEl = $('most-absent-title');
+    const contentEl = $('most-absentees-content');
+    if (titleEl) titleEl.textContent = 'Attendance Data Unavailable';
+    if (contentEl) {
+      contentEl.textContent = 'Absence totals are hidden because attendance records could not be verified. Refresh and try again.';
+    }
+    lastAbsenteeReportData = null;
+    return;
+  }
 
   const qualSelect = $('absentee-filter-qual');
   const targetQual = qualSelect ? qualSelect.value : '';

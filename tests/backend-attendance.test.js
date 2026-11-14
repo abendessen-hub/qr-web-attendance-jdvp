@@ -196,9 +196,16 @@ test('doGet returns a filtered page while keeping complete attendance summaries'
   assert.deepEqual(data.summary, {
     totalTrainees: 3,
     todayAttendance: 1,
+    todayNoTimeOut: 1,
     totalRecords: 2,
     dateCounts: { '2026-10-13': 1, '2026-10-14': 1 },
-    qualificationCounts: { EIM: 2 }
+    qualificationCounts: { EIM: 2 },
+    traineeAttendanceCounts: {
+      '40001': 1,
+      '40002': 1,
+      'juan dela cruz': 1,
+      'trainee two': 1
+    }
   });
 
   doGet({
@@ -243,6 +250,7 @@ test('doGet returns a filtered page while keeping complete attendance summaries'
   data = JSON.parse(output.content);
   assert.equal(data.records.length, 2);
   assert.equal(data.trainees.length, 3);
+  assert.deepEqual(data.summary.qualificationCounts, { EIM: 2 });
 });
 
 test('findTrainee returns exact 5-digit IDs and still supports 4-digit badges efficiently', () => {
