@@ -47,6 +47,16 @@
             <span class="stat-num" id="stat-no-timeout">0</span>
           </span>
         </div>
+        <div class="stat-card stat-card-warning" id="card-most-absent">
+          <span class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </span>
+          <span class="stat-copy">
+            <span class="stat-label">Most Absentees</span>
+            <span class="stat-num" id="stat-most-absent-count">0</span>
+            <span class="stat-sub" id="stat-most-absent-name">No absences yet</span>
+          </span>
+        </div>
         <div class="stat-card">
           <span class="stat-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
@@ -103,12 +113,87 @@
       </section>
     </div>
 
+    <!-- Section: Student Absenteeism & Most Absentees Tracker -->
+    <section class="panel progress-panel most-absentees-section" aria-label="Student absenteeism and most absentees tracker">
+      <div class="progress-section-heading">
+        <span class="section-icon section-icon-warn" aria-hidden="true">&#9888;</span>
+        <div>
+          <h2>Student Absenteeism &amp; Most Absentees Tracker</h2>
+          <p class="hint">Filter absentees by qualification, search students, select dates or all time, and choose how many students to display.</p>
+        </div>
+      </div>
+
+      <div class="most-absentees-card" id="most-absentees-card">
+        <div class="most-absentees-header">
+          <div class="most-absentees-badge-title">
+            <span class="absentee-warning-badge" id="most-absent-badge">Absentees</span>
+            <h3 id="most-absent-title">Calculating...</h3>
+          </div>
+          <div class="most-absentees-actions">
+            <button class="btn btn-sm btn-excel" id="btn-download-absentee-report" type="button" title="Download detailed Excel audit report">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Download Excel
+            </button>
+            <button class="btn btn-sm" id="btn-refresh-absentees" type="button">Refresh</button>
+          </div>
+        </div>
+
+        <!-- Filter bar directly on the Absentees Card -->
+        <div class="absentee-filter-bar">
+          <div class="absentee-filter-field">
+            <label for="absentee-filter-qual">Qualification</label>
+            <select id="absentee-filter-qual">
+              <option value="">All Qualifications</option>
+              <option value="Cookery">Cookery</option>
+              <option value="House Keeping">House Keeping</option>
+              <option value="CSS">CSS</option>
+              <option value="EIM">EIM</option>
+              <option value="SMAW NC I">SMAW NC I</option>
+              <option value="SMAW NC II">SMAW NC II</option>
+            </select>
+          </div>
+
+          <div class="absentee-filter-field">
+            <label for="absentee-filter-date">Time Range / Date</label>
+            <select id="absentee-filter-date">
+              <option value="all">All Time (All Sessions)</option>
+            </select>
+          </div>
+
+          <div class="absentee-filter-field absentee-search-field">
+            <label for="absentee-search-student">Search Trainee</label>
+            <input id="absentee-search-student" type="search" placeholder="Search by name, ID, or QR code...">
+          </div>
+
+          <div class="absentee-filter-field absentee-limit-field">
+            <label for="absentee-limit-input">Show Students</label>
+            <div class="absentee-limit-group">
+              <input id="absentee-limit-input" type="number" min="1" placeholder="All" value="10">
+              <button class="btn ghost btn-sm" id="btn-show-all-absentees" type="button">Show All</button>
+            </div>
+          </div>
+
+          <div class="absentee-filter-actions">
+            <button class="btn ghost btn-sm" id="btn-reset-absentee-filter" type="button">Reset</button>
+          </div>
+        </div>
+
+        <div class="most-absentees-content" id="most-absentees-content">
+          <p class="hint">Loading student absenteeism data...</p>
+        </div>
+      </div>
+    </section>
+
     <section class="panel progress-panel progress-records">
       <div class="progress-section-heading">
         <span class="section-icon section-icon-alt" aria-hidden="true">03</span>
         <div>
           <h2>Daily attendance records</h2>
-          <p class="hint">Filter and review trainee check-ins and students with no time out.</p>
+          <p class="hint">Filter and review trainee check-ins, absentees, and students with no time out.</p>
         </div>
       </div>
 
@@ -134,6 +219,7 @@
           <select id="filter-status">
             <option value="all">All Records</option>
             <option value="present">Present (Timed In)</option>
+            <option value="absent">Absent</option>
             <option value="no-timeout">No Time Out</option>
           </select>
         </div>
@@ -151,6 +237,9 @@
       <div class="filter-pills" role="tablist" aria-label="Attendance status filters">
         <button class="filter-pill active" id="pill-all" type="button" data-status="all">All Records</button>
         <button class="filter-pill" id="pill-present" type="button" data-status="present">Present</button>
+        <button class="filter-pill pill-absent" id="pill-absent" type="button" data-status="absent">
+          Absent <span class="pill-count" id="count-pill-absent">0</span>
+        </button>
         <button class="filter-pill pill-no-timeout" id="pill-no-timeout" type="button" data-status="no-timeout">
           No Time Out <span class="pill-count" id="count-pill-no-timeout">0</span>
         </button>
@@ -214,6 +303,7 @@
 <script src="/back-end/js/config.js"></script>
 <script src="/back-end/lib/jszip.min.js"></script>
 <script src="/back-end/js/attendance-export.js"></script>
+<script src="/back-end/js/attendance-summary.js"></script>
 <script src="/back-end/js/progress.js"></script>
 </body>
 </html>
