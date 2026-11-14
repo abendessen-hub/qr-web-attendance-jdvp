@@ -59,6 +59,25 @@ test('placeholder roster entry matches a one-character surname typo', () => {
   });
 });
 
+test('a different recorded QR code matches a uniquely identified roster name', () => {
+  const cookeryRoster = roster.filter((trainee) => trainee.id.startsWith('1'));
+  const trainee = cookeryRoster.find((entry) => !entry.id.endsWith('6666'));
+  const rows = AttendanceExport.buildAttendanceRows(roster, [
+    {
+      id: '19999',
+      name: trainee.name,
+      timeOut: '04:00 PM'
+    }
+  ], 'Cookery');
+  const matched = rows.find((row) => row.name === trainee.name);
+
+  assert.deepEqual(matched, {
+    id: '19999',
+    name: trainee.name,
+    status: 'Attended'
+  });
+});
+
 test('generated XLSX contains report rows and a distinct style for each status', async () => {
   const rows = [
     { id: '40001', name: 'Trainee & One', status: 'Attended' },

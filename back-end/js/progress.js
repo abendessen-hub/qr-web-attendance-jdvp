@@ -68,12 +68,13 @@ async function loadMasterRoster() {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data)) {
-        masterRoster = data.map(function (t) {
+        masterRoster = data.map(function (t, index) {
           const id = String(t.id || '').trim();
           const prefix = id.charAt(0);
           const qual = QUALIFICATIONS[prefix] || 'Cookery';
           return {
             id: id,
+            rosterKey: String(index) + ':' + id,
             qrCode: getQrCode(id),
             name: String(t.name || '').trim(),
             qualification: qual,
@@ -130,16 +131,30 @@ async function fetchAttendanceExportRecords(date, qualification, search) {
   return firstData.records.concat(...additionalRecords);
 }
 
-async function ensureAbsenteeAttendanceCounts(summaryData) {
-  const counts = summaryData.traineeAttendanceCounts;
-  if (counts && Object.keys(counts).length > 0) return;
-
+async function loadAbsenteeAttendanceSummary(summaryData, roster) {
+  if (!Object.keys(summaryData.dateCounts || {}).length) {
+    summaryData.traineeAttendanceCounts = {};
+    return;
+  }
   const records = await fetchAttendanceExportRecords('', '', '');
-  const derivedCounts = AttendanceSummary.countAttendanceByTrainee(records);
-  if (Number(summaryData.totalRecords) > 0 && Object.keys(derivedCounts).length === 0) {
+  const derived = AttendanceSummary.buildRosterAttendanceSummary(
+    roster,
+    records,
+    AttendanceExport.buildAttendanceRows
+  );
+  if (Number(summaryData.totalRecords) > 0 && Object.keys(derived.counts).length === 0) {
     throw new Error('Attendance records did not include trainee IDs and dates.');
   }
-  summaryData.traineeAttendanceCounts = derivedCounts;
+  summaryData.traineeAttendanceCounts = derived.counts;
+  summaryData.traineeResolvedIds = derived.resolvedIds;
+  summaryData.traineeSessionDatesByQualification = derived.sessionDatesByQualification;
+  summaryData.traineeStudentCountsByQualificationDate = derived.studentCountsByQualificationDate;
+  Object.keys(absenteeDateAttendedCache).forEach(function (date) {
+    delete absenteeDateAttendedCache[date];
+  });
+  Object.keys(derived.attendedByDate).forEach(function (date) {
+    absenteeDateAttendedCache[date] = derived.attendedByDate[date];
+  });
 }
 
 async function downloadAttendanceCheck() {
@@ -257,7 +272,7 @@ async function loadAllData(page = currentPage) {
 
     summary = data.summary;
     try {
-      await ensureAbsenteeAttendanceCounts(summary);
+      await loadAbsenteeAttendanceSummary(summary, masterRoster);
     } catch (error) {
       summary.traineeAttendanceCounts = null;
       console.error('Could not load attendance counts for absentee analytics:', error);
@@ -547,26 +562,15 @@ function renderQualificationProgress(qualCounts) {
 }
 
 // ─── Feature: Student with Most Absentees Analytics ───
-function cleanNameForLookup(name) {
-  return String(name || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 const absenteeDateAttendedCache = {};
+const absenteeDateAttendanceErrors = new Set();
 
 function populateAbsenteeDateDropdown(dates, dateCounts) {
   const dateSelect = $('absentee-filter-date');
   if (!dateSelect) return;
   const currentVal = dateSelect.value || 'all';
 
-  const existingOptions = Array.from(dateSelect.options).map(function (o) { return o.value; });
   const newValues = ['all'].concat(dates);
-  if (existingOptions.join(',') === newValues.join(',')) return;
 
   dateSelect.replaceChildren();
   const allOpt = document.createElement('option');
@@ -582,9 +586,7 @@ function populateAbsenteeDateDropdown(dates, dateCounts) {
     dateSelect.appendChild(opt);
   });
 
-  if (newValues.includes(currentVal)) {
-    dateSelect.value = currentVal;
-  }
+  dateSelect.value = newValues.includes(currentVal) ? currentVal : 'all';
 }
 
 async function loadDateForAbsenteeAnalytics(dateRange) {
@@ -596,14 +598,16 @@ async function loadDateForAbsenteeAnalytics(dateRange) {
   if (titleEl) titleEl.textContent = 'Loading records for ' + formatDateDisplay(dateRange) + '...';
   try {
     const records = await fetchAttendanceExportRecords(dateRange, '', '');
-    const attendedSet = new Set();
-    records.forEach(function (r) {
-      if (r.id) attendedSet.add(String(r.id).trim());
-      if (r.name) attendedSet.add(cleanNameForLookup(r.name));
-    });
-    absenteeDateAttendedCache[dateRange] = attendedSet;
+    const attendance = AttendanceSummary.buildRosterAttendanceSummary(
+      masterRoster,
+      records,
+      AttendanceExport.buildAttendanceRows
+    );
+    absenteeDateAttendedCache[dateRange] = attendance.attendedByDate[dateRange] || new Set();
+    absenteeDateAttendanceErrors.delete(dateRange);
   } catch (err) {
     console.error('Could not load date records for absentee analytics:', err);
+    absenteeDateAttendanceErrors.add(dateRange);
   }
   updateAbsenteeAnalytics(summary, masterRoster);
 }
@@ -611,7 +615,6 @@ async function loadDateForAbsenteeAnalytics(dateRange) {
 function updateAbsenteeAnalytics(summaryData, roster) {
   if (!summaryData) return;
   const allDates = Object.keys(summaryData.dateCounts || {}).sort();
-  populateAbsenteeDateDropdown(allDates, summaryData.dateCounts || {});
   const counts = summaryData.traineeAttendanceCounts;
   if (allDates.length > 0 && (!counts || Object.keys(counts).length === 0)) {
     const titleEl = $('most-absent-title');
@@ -628,6 +631,13 @@ function updateAbsenteeAnalytics(summaryData, roster) {
   const targetQual = qualSelect ? qualSelect.value : '';
   const assignedQual = !CONFIG.IS_ADMIN ? QUALIFICATIONS[CONFIG.QUALIFICATION] : '';
   const finalQual = targetQual || assignedQual;
+  const sessionDates = finalQual && summaryData.traineeSessionDatesByQualification
+    ? summaryData.traineeSessionDatesByQualification[finalQual] || []
+    : allDates;
+  const dateCounts = finalQual && summaryData.traineeStudentCountsByQualificationDate
+    ? summaryData.traineeStudentCountsByQualificationDate[finalQual] || {}
+    : summaryData.dateCounts || {};
+  populateAbsenteeDateDropdown(sessionDates, dateCounts);
 
   if (qualSelect && !CONFIG.IS_ADMIN) {
     qualSelect.value = assignedQual;
@@ -636,6 +646,16 @@ function updateAbsenteeAnalytics(summaryData, roster) {
 
   const dateSelect = $('absentee-filter-date');
   const dateRange = dateSelect ? dateSelect.value : 'all';
+  if (dateRange !== 'all' && absenteeDateAttendanceErrors.has(dateRange)) {
+    const titleEl = $('most-absent-title');
+    const contentEl = $('most-absentees-content');
+    if (titleEl) titleEl.textContent = 'Attendance Data Unavailable';
+    if (contentEl) {
+      contentEl.textContent = 'Absence totals are hidden because attendance records could not be verified. Refresh and try again.';
+    }
+    lastAbsenteeReportData = null;
+    return;
+  }
 
   const searchInput = $('absentee-search-student');
   const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
@@ -649,8 +669,11 @@ function updateAbsenteeAnalytics(summaryData, roster) {
   const applicableRoster = roster.filter(function (t) {
     if (finalQual && t.qualification !== finalQual) return false;
     if (searchTerm) {
-      const matchId = t.id.toLowerCase().includes(searchTerm);
-      const matchQr = t.qrCode.toLowerCase().includes(searchTerm);
+      const resolvedId = summaryData.traineeResolvedIds && summaryData.traineeResolvedIds[t.rosterKey];
+      const matchId = t.id.toLowerCase().includes(searchTerm) ||
+        (resolvedId && resolvedId.toLowerCase().includes(searchTerm));
+      const matchQr = t.qrCode.toLowerCase().includes(searchTerm) ||
+        (resolvedId && getQrCode(resolvedId).toLowerCase().includes(searchTerm));
       const matchName = t.name.toLowerCase().includes(searchTerm);
       if (!matchId && !matchQr && !matchName) return false;
     }
@@ -658,7 +681,7 @@ function updateAbsenteeAnalytics(summaryData, roster) {
   });
 
   const isSpecificDate = dateRange !== 'all';
-  const totalSessions = isSpecificDate ? 1 : allDates.length;
+  const totalSessions = isSpecificDate ? 1 : sessionDates.length;
   const attendedSet = isSpecificDate ? (absenteeDateAttendedCache[dateRange] || new Set()) : null;
 
   const stats = applicableRoster.map(function (t) {
@@ -668,16 +691,14 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     let detailStr = '';
 
     if (isSpecificDate) {
-      const norm = cleanNameForLookup(t.name);
-      const wasPresent = attendedSet ? (attendedSet.has(t.id) || attendedSet.has(norm)) : false;
+      const wasPresent = attendedSet ? attendedSet.has(t.rosterKey) : false;
       daysPresent = wasPresent ? 1 : 0;
       daysAbsent = wasPresent ? 0 : 1;
       rate = wasPresent ? 100 : 0;
       detailStr = wasPresent ? 'Attended (1/1 session)' : 'Absent (0/1 session)';
     } else {
-      const norm = cleanNameForLookup(t.name);
-      daysPresent = (summaryData.traineeAttendanceCounts && (summaryData.traineeAttendanceCounts[t.id] || summaryData.traineeAttendanceCounts[norm]))
-        ? (summaryData.traineeAttendanceCounts[t.id] || summaryData.traineeAttendanceCounts[norm])
+      daysPresent = (summaryData.traineeAttendanceCounts && summaryData.traineeAttendanceCounts[t.rosterKey])
+        ? summaryData.traineeAttendanceCounts[t.rosterKey]
         : 0;
       daysAbsent = Math.max(0, totalSessions - daysPresent);
       rate = totalSessions > 0 ? Math.round((daysPresent / totalSessions) * 100) : 100;
@@ -685,8 +706,13 @@ function updateAbsenteeAnalytics(summaryData, roster) {
     }
 
     return {
-      id: t.id,
-      qrCode: t.qrCode,
+      id: summaryData.traineeResolvedIds && summaryData.traineeResolvedIds[t.rosterKey]
+        ? summaryData.traineeResolvedIds[t.rosterKey]
+        : t.id,
+      qrCode: getQrCode(summaryData.traineeResolvedIds && summaryData.traineeResolvedIds[t.rosterKey]
+        ? summaryData.traineeResolvedIds[t.rosterKey]
+        : t.id),
+      rosterKey: t.rosterKey,
       name: t.name,
       qualification: t.qualification,
       daysPresent: daysPresent,
@@ -814,7 +840,7 @@ function updateAbsenteeAnalytics(summaryData, roster) {
   });
   applicableRoster.forEach(function (t) {
     if (!qualSummaries[t.qualification]) return;
-    var found = absenteesOnly.some(function (s) { return s.id === t.id; });
+    var found = absenteesOnly.some(function (s) { return s.rosterKey === t.rosterKey; });
     if (!found) qualSummaries[t.qualification].perfectAttendance++;
   });
 

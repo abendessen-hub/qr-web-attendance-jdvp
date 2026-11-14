@@ -74,10 +74,8 @@
     const qualificationRoster = roster.filter(function (trainee) {
       return trainee.id.charAt(0) === prefix;
     });
-    const placeholders = qualificationRoster.filter((trainee) =>
-      /^(?:[1-6]|X)6666$/i.test(trainee.id)
-    );
-    const placeholderMatches = new Map();
+    const attendanceByTrainee = new Map();
+    const attendanceIdByTrainee = new Map();
     const recordsById = Array.from(attendanceById, function (entry) {
       return { id: entry[0], record: entry[1] };
     }).filter((entry) =>
@@ -85,42 +83,45 @@
     );
 
     recordsById.forEach(function (entry) {
+      const exactTrainee = qualificationRoster.find(function (trainee) {
+        return trainee.id === entry.id;
+      });
+      if (exactTrainee) {
+        attendanceByTrainee.set(exactTrainee, entry.record);
+        attendanceIdByTrainee.set(exactTrainee, entry.id);
+        return;
+      }
+
       let bestScore = 0;
-      let bestPlaceholder = null;
+      let bestTrainee = null;
       let tied = false;
 
-      placeholders.forEach(function (placeholder) {
-        const score = nameMatchScore(placeholder.name, entry.record.name);
+      qualificationRoster.forEach(function (trainee) {
+        const score = nameMatchScore(trainee.name, entry.record.name);
         if (score > bestScore) {
           bestScore = score;
-          bestPlaceholder = placeholder;
+          bestTrainee = trainee;
           tied = false;
         } else if (score && score === bestScore) {
           tied = true;
         }
       });
 
-      if (bestScore && !tied) {
-        const matches = placeholderMatches.get(bestPlaceholder) || [];
-        matches.push(entry);
-        placeholderMatches.set(bestPlaceholder, matches);
+      if (bestScore && !tied && bestTrainee) {
+        const current = attendanceByTrainee.get(bestTrainee);
+        if (!current || (entry.record.timeOut && !current.timeOut)) {
+          attendanceByTrainee.set(bestTrainee, entry.record);
+          attendanceIdByTrainee.set(bestTrainee, entry.id);
+        }
       }
     });
 
     return qualificationRoster.map(function (trainee) {
       const noTraineeId = /^(?:[1-6]|X)6666$/i.test(trainee.id);
-      let id = trainee.id;
-      let attendance = attendanceById.get(id);
-      if (noTraineeId) {
-        const nameMatches = placeholderMatches.get(trainee) || [];
-        if (nameMatches.length === 1) {
-          id = nameMatches[0].id;
-          attendance = nameMatches[0].record;
-        }
-      }
-      let status = 'Absent';
+      const attendance = attendanceByTrainee.get(trainee) || attendanceById.get(trainee.id);
+      const id = attendanceIdByTrainee.get(trainee) || trainee.id;
+      let status = attendance ? (attendance.timeOut ? 'Attended' : "Didn't time out") : 'Absent';
       if (noTraineeId && id === trainee.id) status = 'No trainee ID found';
-      else if (attendance) status = attendance.timeOut ? 'Attended' : "Didn't time out";
       return { id: id, name: trainee.name, status: status };
     });
   }

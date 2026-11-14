@@ -1,26 +1,66 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { countAttendanceByTrainee } = require('../back-end/js/attendance-summary');
+const AttendanceExport = require('../back-end/js/attendance-export');
+const { buildRosterAttendanceSummary } = require('../back-end/js/attendance-summary');
+const roster = require('../assets/trainee-roster.json');
 
-test('counts distinct attended dates per trainee', () => {
-  const counts = countAttendanceByTrainee([
-    { id: '10066', name: 'John Vincent A. Abanis', date: '2026-11-11', timeIn: '08:40 AM' },
-    { id: '10066', name: 'John Vincent A. Abanis', date: '2026-11-11', timeIn: '08:41 AM' },
-    { id: '10066', name: 'John Vincent A. Abanis', date: '2026-11-10', timeIn: '08:22 AM' },
-    { id: '10067', name: 'Another Trainee', date: '2026-11-11', timeIn: '08:30 AM' }
+function qualifiedRoster() {
+  const qualifications = {
+    '1': 'Cookery',
+    '2': 'House Keeping',
+    '3': 'CSS',
+    '4': 'EIM',
+    '5': 'SMAW NC I',
+    '6': 'SMAW NC II'
+  };
+  return roster.map((trainee, index) => ({
+    ...trainee,
+    rosterKey: String(index) + ':' + trainee.id,
+    qualification: qualifications[trainee.id.charAt(0)],
+    qrCode: trainee.id.slice(-4)
+  }));
+}
+
+test('counts distinct daily attendance when the recorded QR differs from the roster ID', () => {
+  const trainees = qualifiedRoster();
+  const trainee = trainees.find((entry) => entry.name === 'YAMAUCHI, YUUKI');
+  const records = [
+    { id: '10053', name: 'Yuko P. Yamauchi', qualification: 'Cookery', date: '2026-11-11', timeIn: '08:09 AM', timeOut: '04:23 PM' },
+    { id: '10053', name: 'Yuko P. Yamauchi', qualification: 'Cookery', date: '2026-11-11', timeIn: '08:10 AM', timeOut: '04:24 PM' },
+    { id: '10053', name: 'Yuko P. Yamauchi', qualification: 'Cookery', date: '2026-11-10', timeIn: '08:19 AM', timeOut: '03:43 PM' },
+    { id: '10053', name: 'Yuko P. Yamauchi', qualification: 'Cookery', date: '2026-11-09', timeIn: '08:07 AM', timeOut: '04:21 PM' },
+    { id: '10053', name: 'Yuko P. Yamauchi', qualification: 'Cookery', date: '2026-11-03', timeIn: '04:20 PM', timeOut: '' }
+  ];
+  const result = buildRosterAttendanceSummary(
+    trainees,
+    records,
+    AttendanceExport.buildAttendanceRows
+  );
+
+  assert.equal(result.counts[trainee.rosterKey], 4);
+  assert.equal(result.attendedByDate['2026-11-03'].has(trainee.rosterKey), true);
+  assert.equal(result.resolvedIds[trainee.rosterKey], '10053');
+  const anotherPlaceholder = trainees.find((entry) =>
+    entry.id === '16666' && entry.rosterKey !== trainee.rosterKey
+  );
+  assert.equal(result.counts[anotherPlaceholder.rosterKey] || 0, 0);
+  assert.deepEqual(result.sessionDatesByQualification.Cookery, [
+    '2026-11-03',
+    '2026-11-09',
+    '2026-11-10',
+    '2026-11-11'
   ]);
-
-  assert.equal(counts['10066'], 2);
-  assert.equal(counts['10067'], 1);
-  assert.equal(counts['john vincent a abanis'], 2);
 });
 
-test('ignores attendance rows without a trainee ID or date', () => {
-  const counts = countAttendanceByTrainee([
-    { id: '10066', date: '' },
-    { id: '', date: '2026-11-11' },
-    { date: '2026-11-11' }
-  ]);
+test('counts records using the exact roster ID and treats no-time-out as present', () => {
+  const trainees = qualifiedRoster();
+  const trainee = trainees.find((entry) => entry.id === '10001');
+  const result = buildRosterAttendanceSummary(
+    trainees,
+    [{ id: '10001', name: trainee.name, qualification: 'Cookery', date: '2026-11-11', timeIn: '08:00 AM', timeOut: '' }],
+    AttendanceExport.buildAttendanceRows
+  );
 
-  assert.deepEqual(Object.keys(counts), []);
+  assert.equal(result.counts[trainee.rosterKey], 1);
+  assert.equal(result.attendedByDate['2026-11-11'].has(trainee.rosterKey), true);
 });
